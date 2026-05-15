@@ -40,7 +40,7 @@ grammar = {
     # 过程声明
     "ProcDecpart": [["ε"], ["ProcDec"]],
     "ProcDec": [["PROCEDURE", "ProcName", "(", "ParamList", ")", ";", "ProcDecPart", "ProcBody", "ProcDecMore"]],
-    "ProcDecMore": [["ε"], ["ProcDeclaration"]],
+    "ProcDecMore": [["ε"], ["ProcDec"]],
     "ProcName": [["ID"]],
     # 参数声明
     "ParamList": [["ε"], ["ParamDecList"]],

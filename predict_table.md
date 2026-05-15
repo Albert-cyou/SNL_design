@@ -44,7 +44,7 @@
 | 40 | ProcDecpart → ProcDec | {PROCEDURE} |
 | 41 | ProcDec → PROCEDURE ProcName ( ParamList ) ; ProcDecPart ProcBody ProcDecMore | {PROCEDURE} |
 | 42 | ProcDecMore → ε | {BEGIN} |
-| 43 | ProcDecMore → ProcDeclaration | {ProcDeclaration} |
+| 43 | ProcDecMore → ProcDec | {PROCEDURE} |
 | 44 | ProcName → ID | {ID} |
 | 45 | ParamList → ε | {)} |
 | 46 | ParamList → ParamDecList | {ARRAY, CHAR, ID, INTEGER, RECORD, VAR} |
