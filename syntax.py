@@ -2,7 +2,7 @@
 # 输出：语法错误检查信息和语法树
 # 方法：递归下降法
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import List, Optional, Union
 from enum import Enum, auto
 from make_token import TokenType, Token, Tokenizer
@@ -49,27 +49,47 @@ class ASTNode:
 
     def children(self):
         return []
+    
+    def node_name(self):
+        return self.__class__.__name__
 
     def _pretty_label(self):
         class_name = self.__class__.__name__
-        if class_name == "ProgramNode":
-            return "Program"
-        if class_name == "AssignNode":
-            return "Assign"
-        if class_name == "IDNode":
-            return f"ID({self.name})"
-        if class_name == "IntConstNode":
-            return f"IntConst({self.value})"
-        if class_name == "CharConstNode":
-            return f"CharConst({self.value})"
-        if class_name == "ArrayElemNode":
-            return "ArrayElem"
-        if class_name == "RecordFieldNode":
-            return "RecordField"
+        OUTPUT = {
+            "ProgramNode": "Program",
+            "ProgramHeadNode": "ProgramHead",
+            "DeclareNode": "DeclareHead",
+            "ProgramBodyNode": "ProgramBodyHead",
+            "AssignNode": "Assign",
+            "ArrayElemNode": "ArrayElem",
+            "RecordFieldNode": "RecordField",
+            "TypeDecHeadNode": "TypeDeclarationHead",
+            "TypeDecNode": "TypeDeclaration",
+            "VarDecHeadNode": "VarDecHead",
+            "VarDecNode": "VarDec",
+            "ProcDecHeadNode": "ProcDecHead",
+            "ProcDecNode": "ProcDec",
+            "ParamNode": "Param",
+            "ReadNode": "Read",
+            "WriteNode": "Write",
+            "ExpNode": "Expression",
+            "RelExpNode": "RelationalExpression",
+            "TermNode": "Term",
+            "BaseTypeNode": lambda node: f"BaseType({node.kind.name})",
+            "IDNode": lambda node: f"ID({node.name})",
+            "TypeNode": lambda node: f"Type({node.__class__.__name__})",
+            "IntConstNode": lambda node: f"IntConst({node.value})",
+            "CharConstNode": lambda node: f"CharConst({node.value})",
+            "BaseTypeNode": lambda node: f"BaseType({node.kind.name})",
+        }
+        if class_name in OUTPUT:
+            label = OUTPUT[class_name]
+            if callable(label):
+                return label(self)
+            return label
         return class_name
 
     def _pretty_children(self):
-        from dataclasses import fields
         children = []
         for field_info in fields(self):
             value = getattr(self, field_info.name)
@@ -115,9 +135,13 @@ class ProgramHeadNode(ASTNode):
 
 @dataclass
 class DeclareNode(ASTNode):
-    type_dec_head: Optional['TypeDecNode'] = None
+    type_dec_head: Optional['TypeDecHeadNode'] = None
     var_dec_head: Optional['VarDecHeadNode'] = None
     proc_dec_head: Optional['ProcDecHeadNode'] = None
+
+@dataclass
+class TypeDecHeadNode(ASTNode):
+    children: List[TypeDecNode] = field(default_factory=list)
 
 
 @dataclass
@@ -374,7 +398,7 @@ def TypeDec(tokens, current_token):
 
 
 def TypeDecList(tokens, current_token):
-    declarations: List[TypeDecNode] = []
+    declarations: TypeDecHeadNode = TypeDecHeadNode(children=[])
     while True:
         type_id, error, current_token = TypeId(tokens, current_token)
         if error:
@@ -388,7 +412,7 @@ def TypeDecList(tokens, current_token):
         matched, current_token = Match(TokenType.SEMICOLON, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ';'", current_token
-        declarations.append(TypeDecNode(name=type_id, type_def=type_def))
+        declarations.children.append(TypeDecNode(name=type_id, type_def=type_def))
         if tokens[current_token].Sem != TokenType.ID:
             break
     return declarations, None, current_token
@@ -925,7 +949,7 @@ def OtherFactor(tokens, current_token):
         op, error, current_token = MultOp(tokens, current_token)
         if error:
             return None, error, current_token
-        factor_node, error, current_token = Factor(tokens, current_token)
+        factor_node, error, current_token = Term(tokens, current_token)
         if error:
             return None, error, current_token
         items.append((op, factor_node))
@@ -1036,7 +1060,7 @@ def syntax_analysis(tokens):
 if __name__ == "__main__":
     source_code = """{我是一个注释}
     program Example
-    type t=integer;
+    type t=integer;k=char;
     var t v1;
         char v2;
     begin
