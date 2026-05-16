@@ -35,8 +35,8 @@ class SNLAnalyzerApp(tk.Tk):
         self._schedule_parse()
 
         # 绑定光标移动事件和文本变更事件来更新行号和高亮
-        self.source_text.bind("<KeyRelease>", self._update_line_numbers)
-        self.source_text.bind("<ButtonRelease-1>", self._update_line_numbers)
+        self.source_text.bind("<KeyRelease>", self._on_editor_update)
+        self.source_text.bind("<ButtonRelease-1>", self._on_editor_update)
         self.source_text.bind("<Configure>", self._update_line_numbers)
         self.source_text.bind("<<Modified>>", self._on_source_modified)
         
@@ -229,12 +229,20 @@ class SNLAnalyzerApp(tk.Tk):
         self._schedule_parse()
         self._update_line_numbers()  # 文本变更时更新行号
 
+    def _on_editor_update(self, event=None):
+        self._update_line_numbers()
+        self._schedule_parse()
+
     def _schedule_parse(self):
         if self._parse_after_id is not None:
             self.after_cancel(self._parse_after_id)
-        self._parse_after_id = self.after(400, self._parse_source)
+        self._parse_after_id = self.after(1000, self._parse_source)
 
     def _parse_source(self):
+        if self._parse_after_id is not None:
+            self.after_cancel(self._parse_after_id)
+            self._parse_after_id = None
+
         source_code = self.source_text.get("1.0", "end-1c")
         tokens = []
         syntax_tree = None
