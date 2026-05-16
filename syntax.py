@@ -50,70 +50,45 @@ class ASTNode:
     def children(self):
         return []
     
-    def node_name(self):
+    def node_print(self):
         return self.__class__.__name__
 
-    def _pretty_label(self):
-        class_name = self.__class__.__name__
-        OUTPUT = {
-            "ProgramNode": "Program",
-            "ProgramHeadNode": "ProgramHead",
-            "DeclareNode": "DeclareHead",
-            "ProgramBodyNode": "ProgramBodyHead",
-            "AssignNode": "Assign",
-            "ArrayElemNode": "ArrayElem",
-            "RecordFieldNode": "RecordField",
-            "TypeDecHeadNode": "TypeDeclarationHead",
-            "TypeDecNode": "TypeDeclaration",
-            "VarDecHeadNode": "VarDecHead",
-            "VarDecNode": "VarDec",
-            "ProcDecHeadNode": "ProcDecHead",
-            "ProcDecNode": "ProcDec",
-            "ParamNode": "Param",
-            "ReadNode": "Read",
-            "WriteNode": "Write",
-            "ExpNode": "Expression",
-            "RelExpNode": "RelationalExpression",
-            "TermNode": "Term",
-            "BaseTypeNode": lambda node: f"BaseType({node.kind.name})",
-            "IDNode": lambda node: f"ID({node.name})",
-            "TypeNode": lambda node: f"Type({node.__class__.__name__})",
-            "IntConstNode": lambda node: f"IntConst({node.value})",
-            "CharConstNode": lambda node: f"CharConst({node.value})",
-            "BaseTypeNode": lambda node: f"BaseType({node.kind.name})",
-        }
-        if class_name in OUTPUT:
-            label = OUTPUT[class_name]
-            if callable(label):
-                return label(self)
-            return label
-        return class_name
+    def pretty_print(self, prefix="", is_last=True):
+        branch = "└── " if is_last else "├── "
+        print(prefix + branch + self.node_print())
 
-    def _pretty_children(self):
-        children = []
-        for field_info in fields(self):
-            value = getattr(self, field_info.name)
-            if value is None:
-                continue
-            if isinstance(value, ASTNode):
-                children.append(value)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, ASTNode):
-                        children.append(item)
-        return children
+        children = self.children()
+        # Filter out None values from children
+        if children is None:
+            children = []
+        else:
+            children = [c for c in children if c is not None]
 
-    def pretty_print(self, prefix: str = "", is_last: bool = True):
-        label = self._pretty_label()
-        branch = "└── " if prefix == "" or is_last else "├── "
-        print(f"{prefix}{branch}{label}")
-        children = self._pretty_children()
-        for index, child in enumerate(children):
-            next_prefix = prefix + ("    " if prefix == "" or is_last else "│   ")
-            child.pretty_print(next_prefix, index == len(children) - 1)
+        for i, child in enumerate(children):
+            next_prefix = prefix + (
+                "    " if is_last else "│   "
+            )
+            child.pretty_print(
+                next_prefix,
+                i == len(children)-1
+            )
 
     def print(self, indent: int = 0):
         self.pretty_print()
+
+
+# Helper class for branch labels in tree display
+class BranchLabel(ASTNode):
+    """用于在语法树中显示分支标签（如THEN、ELSE、DO等）"""
+    def __init__(self, label: str, children: List = None):
+        self.label = label
+        self._children = children or []
+    
+    def node_print(self):
+        return f"[{self.label}]"
+    
+    def children(self):
+        return self._children
 
 
 @dataclass
@@ -127,10 +102,19 @@ class ProgramNode(ASTNode):
     Declare: Optional['DeclareNode'] = None
     StmL: Optional['ProgramBodyNode'] = None
 
+    def node_print(self):
+        return "Program"
+    
+    def children(self):
+        return [self.ProgramHead, self.Declare, self.StmL]
+
 
 @dataclass
 class ProgramHeadNode(ASTNode):
     name: 'IDNode'
+
+    def node_print(self):
+        return f"Program \"{self.name.name}\""
 
 
 @dataclass
@@ -139,25 +123,50 @@ class DeclareNode(ASTNode):
     var_dec_head: Optional['VarDecHeadNode'] = None
     proc_dec_head: Optional['ProcDecHeadNode'] = None
 
+    def children(self):
+        return [self.type_dec_head,
+                self.var_dec_head,
+                self.proc_dec_head]
+    
+    def node_print(self):
+        return "DeclarePart"
+
 @dataclass
 class TypeDecHeadNode(ASTNode):
-    children: List[TypeDecNode] = field(default_factory=list)
+    nodes: List['TypeDecNode'] = field(default_factory=list)
 
+    def children(self):
+        return self.nodes
+
+    def node_print(self):
+        return "TypeDeclarationHead"
 
 @dataclass
 class TypeDecNode(ASTNode):
     name: 'IDNode'
     type_def: TypeNode
 
+    def children(self):
+        return []
+    
+    def node_print(self):
+        return f"TypeDec: {self.name.name} = {self.type_def.node_print()}"
+
 
 @dataclass
 class BaseTypeNode(TypeNode):
     kind: TypeKind
+    
+    def node_print(self):
+        return self.kind.name
 
 
 @dataclass
 class NamedTypeNode(TypeNode):
     name: 'IDNode'
+
+    def node_print(self):
+        return f"Type({self.name.name})"
 
 
 @dataclass
@@ -166,27 +175,58 @@ class ArrayTypeNode(TypeNode):
     up: 'IntConstNode'
     base_type: TypeNode
 
+    def node_print(self):
+        return f"Array[{self.low.value}..{self.up.value}] of {self.base_type.node_print()}"
+
 
 @dataclass
 class RecordTypeNode(TypeNode):
     fields: List['VarDecNode'] = field(default_factory=list)
 
+    def node_print(self):
+        return "Record"
+    
+    def children(self):
+        return self.fields
+
 
 @dataclass
 class VarDecNode(ASTNode):
     type: TypeNode
-    name: Optional['IDNode'] = None
+    name: Optional[Union['IDNode', List['IDNode']]] = None
+
+    def node_print(self):
+        if self.name is None:
+            return f"Var: {self.type.node_print()}"
+        if isinstance(self.name, list):
+            names = ', '.join([n.name for n in self.name])
+        else:
+            names = self.name.name
+        return f"Var: {names} : {self.type.node_print()}"
+    
+    def children(self):
+        return []
 
 
 @dataclass
 class VarDecHeadNode(ASTNode):
-    children: List[VarDecNode] = field(default_factory=list)
+    nodes: List[VarDecNode] = field(default_factory=list)
 
+    def children(self):
+        return self.nodes
+    
+    def node_print(self):
+        return "VarDecHead"
 
 @dataclass
 class ProcDecHeadNode(ASTNode):
-    children: List['ProcDecNode'] = field(default_factory=list)
+    nodes: List['ProcDecNode'] = field(default_factory=list)
 
+    def children(self):
+        return self.nodes
+    
+    def node_print(self):
+        return "ProcDecHead"
 
 @dataclass
 class ProcDecNode(ASTNode):
@@ -195,13 +235,22 @@ class ProcDecNode(ASTNode):
     declare: Optional['DeclareNode'] = None
     body: Optional['ProgramBodyNode'] = None
 
+    def children(self):
+        return [self.name] + self.params + [self.declare,self.body]
+
+    def node_print(self):
+        return "ProcDec"
 
 @dataclass
 class ParamNode(ASTNode):
     type: TypeNode
     names: List['IDNode'] = field(default_factory=list)
     is_var: bool = False
-
+    
+    def node_print(self):
+        var_flag = "var" if self.is_var else ""
+        name_str = ', '.join([n.name for n in self.names])
+        return f"Param {var_flag}: {name_str} : {self.type.node_print()}"
 
 @dataclass
 class StmtNode(ASTNode):
@@ -215,6 +264,17 @@ class IfNode(StmtNode):
     else_stm: List['StmtNode'] = field(default_factory=list)
     kind: StmType = field(default=StmType.IfK, init=False)
 
+    def node_print(self):
+        return "IF"
+    
+    def children(self):
+        result = [self.condition]
+        if self.then_stm:
+            result.append(BranchLabel("THEN", self.then_stm))
+        if self.else_stm:
+            result.append(BranchLabel("ELSE", self.else_stm))
+        return result 
+
 
 @dataclass
 class WhileNode(StmtNode):
@@ -222,11 +282,23 @@ class WhileNode(StmtNode):
     body: List['StmtNode'] = field(default_factory=list)
     kind: StmType = field(default=StmType.WhileK, init=False)
 
+    def children(self):
+        result = [self.condition]
+        if self.body:
+            result.append(BranchLabel("DO", self.body))
+        return result
+
 
 @dataclass
 class ReadNode(StmtNode):
     var: 'IDNode'
     kind: StmType = field(default=StmType.ReadK, init=False)
+
+    def node_print(self):
+        return "READ"
+    
+    def children(self):
+        return [self.var]
 
 
 @dataclass
@@ -234,11 +306,23 @@ class WriteNode(StmtNode):
     exp: 'ExpNode'
     kind: StmType = field(default=StmType.WriteK, init=False)
 
+    def node_print(self):
+        return "WRITE"
+    
+    def children(self):
+        return [self.exp]
+
 
 @dataclass
 class ReturnNode(StmtNode):
     exp: Optional['ExpNode'] = None
     kind: StmType = field(default=StmType.ReturnK, init=False)
+
+    def node_print(self):
+        return "RETURN"
+    
+    def children(self):
+        return [self.exp] if self.exp else []
 
 
 @dataclass
@@ -247,6 +331,12 @@ class AssignNode(StmtNode):
     exp: 'ExpNode'
     kind: StmType = field(default=StmType.AssignK, init=False)
 
+    def node_print(self):
+        return "ASSIGN :="
+    
+    def children(self):
+        return [self.var, self.exp]
+
 
 @dataclass
 class CallNode(StmtNode):
@@ -254,10 +344,19 @@ class CallNode(StmtNode):
     args: List['ExpNode'] = field(default_factory=list)
     kind: StmType = field(default=StmType.CallK, init=False)
 
+    def node_print(self):
+        return f"CALL {self.name.name}()"
+    
+    def children(self):
+        return [self.name] + self.args
+
 
 @dataclass
 class IDNode(ASTNode):
     name: str = ""
+
+    def node_print(self):
+        return f"ID={self.name}"
 
 
 @dataclass
@@ -265,11 +364,23 @@ class ArrayElemNode(ASTNode):
     array: IDNode
     index: 'ExpNode'
 
+    def node_print(self):
+        return f"ArrayElem[]"
+    
+    def children(self):
+        return [self.array, self.index]
+
 
 @dataclass
 class RecordFieldNode(ASTNode):
     record: IDNode
     field: Union[IDNode, ArrayElemNode]
+
+    def node_print(self):
+        return "RecordField(.)"
+    
+    def children(self):
+        return [self.record, self.field]
 
 
 @dataclass
@@ -278,17 +389,52 @@ class RelExpNode(ASTNode):
     left: 'ExpNode'
     right: Optional['ExpNode'] = None
 
+    def node_print(self):
+        if self.CompOp:
+            op_str = "<" if self.CompOp == CompOpType.LT else "="
+            return f"RelExp({op_str})"
+        return "RelExp"
+    
+    def children(self):
+        if self.right:
+            return [self.left, self.right]
+        return [self.left]
+
 
 @dataclass
 class ExpNode(ASTNode):
     term: 'TermNode'
     otherterm: List[tuple[AddOpType, 'TermNode']] = field(default_factory=list)
 
+    def node_print(self):
+        if self.otherterm:
+            return "Exp(+/-)"
+        return "Exp"
+    
+    def children(self):
+        result = [self.term]
+        for op, term in self.otherterm:
+            op_label = BranchLabel(f"{op.name}", [term])
+            result.append(op_label)
+        return result
+
 
 @dataclass
 class TermNode(ASTNode):
     factor: 'FactorNode'
     otherfactor: List[tuple[MultOpType, 'FactorNode']] = field(default_factory=list)
+
+    def node_print(self):
+        if self.otherfactor:
+            return "Term(*/)" 
+        return "Term"
+    
+    def children(self):
+        result = [self.factor]
+        for op, factor in self.otherfactor:
+            op_label = BranchLabel(f"{op.name}", [factor])
+            result.append(op_label)
+        return result
 
 
 @dataclass
@@ -300,20 +446,38 @@ class FactorNode(ASTNode):
 class ParenExpNode(FactorNode):
     exp: 'ExpNode'
 
+    def node_print(self):
+        return "("
+    
+    def children(self):
+        return [self.exp]
+
 
 @dataclass
 class IntConstNode(FactorNode):
     value: int = 0
+
+    def node_print(self):
+        return f"IntConst({self.value})"
 
 
 @dataclass
 class CharConstNode(FactorNode):
     value: str = ""
 
+    def node_print(self):
+        return f"CharConst('{self.value}')"
+
 
 @dataclass
 class ProgramBodyNode(ASTNode):
-    children: List[StmtNode] = field(default_factory=list)
+    children_list: List[StmtNode] = field(default_factory=list)
+
+    def node_print(self):
+        return "Body"
+    
+    def children(self):
+        return self.children_list
 
 
 ##########################################################################
@@ -398,7 +562,7 @@ def TypeDec(tokens, current_token):
 
 
 def TypeDecList(tokens, current_token):
-    declarations: TypeDecHeadNode = TypeDecHeadNode(children=[])
+    declarations: TypeDecHeadNode = TypeDecHeadNode(nodes=[])
     while True:
         type_id, error, current_token = TypeId(tokens, current_token)
         if error:
@@ -412,7 +576,7 @@ def TypeDecList(tokens, current_token):
         matched, current_token = Match(TokenType.SEMICOLON, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ';'", current_token
-        declarations.children.append(TypeDecNode(name=type_id, type_def=type_def))
+        declarations.nodes.append(TypeDecNode(name=type_id, type_def=type_def))
         if tokens[current_token].Sem != TokenType.ID:
             break
     return declarations, None, current_token
@@ -560,7 +724,7 @@ def VarDec(tokens, current_token):
     declarations, error, current_token = VarDecList(tokens, current_token)
     if error:
         return None, error, current_token
-    return VarDecHeadNode(children=declarations), None, current_token
+    return VarDecHeadNode(nodes=declarations), None, current_token
 
 
 def VarDecList(tokens, current_token):
@@ -593,7 +757,7 @@ def ProcDecpart(tokens, current_token):
     procedures, error, current_token = ProcDecs(tokens, current_token)
     if error:
         return None, error, current_token
-    return ProcDecHeadNode(children=procedures), None, current_token
+    return ProcDecHeadNode(nodes=procedures), None, current_token
 
 
 def ProcDecs(tokens, current_token):
@@ -703,7 +867,7 @@ def ProgramBody(tokens, current_token):
     matched, current_token = Match(TokenType.END, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'end'", current_token
-    return ProgramBodyNode(children=statements), None, current_token
+    return ProgramBodyNode(children_list=statements), None, current_token
 
 
 def StmList(tokens, current_token):
