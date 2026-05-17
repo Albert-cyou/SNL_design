@@ -45,7 +45,7 @@ class MultOpType(Enum):
 
 @dataclass
 class ASTNode:
-    lineno: int = field(default=0, init=False)
+    lineno: int = field(default=0, kw_only=True)
 
     def children(self):
         return []
@@ -499,6 +499,7 @@ def Match(expected_token, tokens, current_token):
 
 def Program(tokens):
     current_token = 0
+    lineno = 0
     PheadK, error, current_token = ProgramHead(tokens, current_token)
     if error:
         return None, error
@@ -510,27 +511,29 @@ def Program(tokens):
         return None, error
     if current_token < len(tokens) and tokens[current_token].Sem == TokenType.DOT:
         current_token += 1
-    return ProgramNode(ProgramHead=PheadK, Declare=DeclareK, StmL=StmLK), None, current_token
+    return ProgramNode(ProgramHead=PheadK, Declare=DeclareK, StmL=StmLK, lineno=lineno), None, current_token
 
 
 def ProgramHead(tokens, current_token):
     matched, current_token = Match(TokenType.PROGRAM, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'program' keyword", current_token
+    lineno = tokens[current_token].Lineshow
     name, error, current_token = ProgramName(tokens, current_token)
     if error:
         return None, error, current_token
-    return ProgramHeadNode(name=name), None, current_token
+    return ProgramHeadNode(name=name, lineno=lineno), None, current_token
 
 
 def ProgramName(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier after 'program' keyword", current_token
-    return IDNode(name=tokens[current_token - 1].Lex), None, current_token
+    return IDNode(name=tokens[current_token - 1].Lex, lineno=tokens[current_token - 1].Lineshow), None, current_token
 
 
 def DeclarePart(tokens, current_token):
+    lineno = tokens[current_token].Lineshow
     type_dec_head, error, current_token = TypeDecpart(tokens, current_token)
     if error:
         return None, error, current_token
@@ -540,7 +543,7 @@ def DeclarePart(tokens, current_token):
     proc_dec_head, error, current_token = ProcDecpart(tokens, current_token)
     if error:
         return None, error, current_token
-    return DeclareNode(type_dec_head=type_dec_head, var_dec_head=var_dec_head, proc_dec_head=proc_dec_head), None, current_token
+    return DeclareNode(type_dec_head=type_dec_head, var_dec_head=var_dec_head, proc_dec_head=proc_dec_head, lineno=lineno), None, current_token
 
 
 def TypeDecpart(tokens, current_token):
@@ -586,7 +589,7 @@ def TypeId(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    return IDNode(name=tokens[current_token - 1].Lex), None, current_token
+    return IDNode(name=tokens[current_token - 1].Lex,lineno=tokens[current_token - 1].Lineshow), None, current_token
 
 
 def TypeDef(tokens, current_token):
@@ -605,21 +608,22 @@ def NamedType(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected type identifier", current_token
-    return NamedTypeNode(name=IDNode(name=tokens[current_token - 1].Lex)), None, current_token
+    return NamedTypeNode(name=IDNode(name=tokens[current_token - 1].Lex), lineno=tokens[current_token - 1].Lineshow), None, current_token
 
 
 def BaseType(tokens, current_token):
     if tokens[current_token].Sem == TokenType.INTEGER:
         matched, current_token = Match(TokenType.INTEGER, tokens, current_token)
-        return BaseTypeNode(kind=TypeKind.INTEGER), None, current_token
+        return BaseTypeNode(kind=TypeKind.INTEGER, lineno=tokens[current_token - 1].Lineshow), None, current_token
     if tokens[current_token].Sem == TokenType.CHAR:
         matched, current_token = Match(TokenType.CHAR, tokens, current_token)
-        return BaseTypeNode(kind=TypeKind.CHAR), None, current_token
+        return BaseTypeNode(kind=TypeKind.CHAR, lineno=tokens[current_token - 1].Lineshow), None, current_token
     return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected base type", current_token
 
 
 def ArrayType(tokens, current_token):
     matched, current_token = Match(TokenType.ARRAY, tokens, current_token)
+    lineno = tokens[current_token - 1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'array'", current_token
     matched, current_token = Match(TokenType.LEFT_SQUARE, tokens, current_token)
@@ -643,14 +647,14 @@ def ArrayType(tokens, current_token):
     base_type, error, current_token = BaseType(tokens, current_token)
     if error:
         return None, error, current_token
-    return ArrayTypeNode(low=low, up=up, base_type=base_type), None, current_token
+    return ArrayTypeNode(low=low, up=up, base_type=base_type,lineno=lineno), None, current_token
 
 
 def Low(tokens, current_token):
     matched, current_token = Match(TokenType.INTC, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected integer constant", current_token
-    return IntConstNode(value=int(tokens[current_token - 1].Lex)), None, current_token
+    return IntConstNode(value=int(tokens[current_token - 1].Lex),lineno=tokens[current_token - 1].Lineshow), None, current_token
 
 
 def Top(tokens, current_token):
@@ -659,6 +663,7 @@ def Top(tokens, current_token):
 
 def RecType(tokens, current_token):
     matched, current_token = Match(TokenType.RECORD, tokens, current_token)
+    lineno=tokens[current_token - 1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'record'", current_token
     fields, error, current_token = FieldDecList(tokens, current_token)
@@ -667,12 +672,13 @@ def RecType(tokens, current_token):
     matched, current_token = Match(TokenType.END, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'end'", current_token
-    return RecordTypeNode(fields=fields), None, current_token
+    return RecordTypeNode(fields=fields,lineno=lineno), None, current_token
 
 
 def FieldDecList(tokens, current_token):
     fields: List[VarDecNode] = []
     while tokens[current_token].Sem in [TokenType.CHAR, TokenType.INTEGER, TokenType.ARRAY]:
+        lineno = tokens[current_token].Lineshow
         field_type, error, current_token = FieldType(tokens, current_token)
         if error:
             return None, error, current_token
@@ -682,7 +688,7 @@ def FieldDecList(tokens, current_token):
         matched, current_token = Match(TokenType.SEMICOLON, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ';'", current_token
-        fields.extend([VarDecNode(type=field_type, name=id_node) for id_node in ids])
+        fields.extend([VarDecNode(type=field_type, name=id_node,lineno=lineno) for id_node in ids])
     return fields, None, current_token
 
 
@@ -699,13 +705,13 @@ def IdList(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    ids.append(IDNode(name=tokens[current_token - 1].Lex))
+    ids.append(IDNode(name=tokens[current_token - 1].Lex,lineno=tokens[current_token - 1].Lineshow))
     while tokens[current_token].Sem == TokenType.COMMA:
         current_token += 1
         matched, current_token = Match(TokenType.ID, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier after ','", current_token
-        ids.append(IDNode(name=tokens[current_token - 1].Lex))
+        ids.append(IDNode(name=tokens[current_token - 1].Lex,lineno=tokens[current_token - 1].Lineshow))
     return ids, None, current_token
 
 
@@ -719,17 +725,19 @@ def VarDecpart(tokens, current_token):
 
 def VarDec(tokens, current_token):
     matched, current_token = Match(TokenType.VAR, tokens, current_token)
+    lineno=tokens[current_token - 1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'var'", current_token
     declarations, error, current_token = VarDecList(tokens, current_token)
     if error:
         return None, error, current_token
-    return VarDecHeadNode(nodes=declarations), None, current_token
+    return VarDecHeadNode(nodes=declarations,lineno=lineno), None, current_token
 
 
 def VarDecList(tokens, current_token):
     declarations: List[VarDecNode] = []
     while tokens[current_token].Sem in [TokenType.ARRAY, TokenType.CHAR, TokenType.INTEGER, TokenType.ID, TokenType.RECORD]:
+        lineno = tokens[current_token].Lineshow
         var_type, error, current_token = TypeDef(tokens, current_token)
         if error:
             return None, error, current_token
@@ -739,7 +747,7 @@ def VarDecList(tokens, current_token):
         matched, current_token = Match(TokenType.SEMICOLON, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ';'", current_token
-        declarations.extend([VarDecNode(type=var_type, name=id_node) for id_node in id_nodes])
+        declarations.extend([VarDecNode(type=var_type, name=id_node,lineno=lineno) for id_node in id_nodes])
         if tokens[current_token].Sem not in [TokenType.ARRAY, TokenType.CHAR, TokenType.INTEGER, TokenType.ID, TokenType.RECORD]:
             break
     return declarations, None, current_token
@@ -754,10 +762,11 @@ def ProcDecpart(tokens, current_token):
         return None, None, current_token
     if tokens[current_token].Sem != TokenType.PROCEDURE:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected procedure declaration or begin", current_token
+    lineno = tokens[current_token].Lineshow
     procedures, error, current_token = ProcDecs(tokens, current_token)
     if error:
         return None, error, current_token
-    return ProcDecHeadNode(nodes=procedures), None, current_token
+    return ProcDecHeadNode(nodes=procedures,lineno=lineno), None, current_token
 
 
 def ProcDecs(tokens, current_token):
@@ -772,6 +781,7 @@ def ProcDecs(tokens, current_token):
 
 def ProcDec(tokens, current_token):
     matched, current_token = Match(TokenType.PROCEDURE, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'procedure'", current_token
     proc_name, error, current_token = ProcName(tokens, current_token)
@@ -795,14 +805,14 @@ def ProcDec(tokens, current_token):
     proc_body, error, current_token = ProcBody(tokens, current_token)
     if error:
         return None, error, current_token
-    return ProcDecNode(name=proc_name, params=params or [], declare=proc_declare, body=proc_body), None, current_token
+    return ProcDecNode(name=proc_name, params=params or [], declare=proc_declare, body=proc_body,lineno=lineno), None, current_token
 
 
 def ProcName(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    return IDNode(name=tokens[current_token - 1].Lex), None, current_token
+    return IDNode(name=tokens[current_token - 1].Lex, lineno=tokens[current_token-1].Lineshow), None, current_token
 
 
 def ParamList(tokens, current_token):
@@ -833,13 +843,14 @@ def Param(tokens, current_token):
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'var'", current_token
         is_var = True
+    lineno = tokens[current_token - 1].Lineshow
     type_def, error, current_token = TypeDef(tokens, current_token)
     if error:
         return None, error, current_token
     name_nodes, error, current_token = FormList(tokens, current_token)
     if error:
         return None, error, current_token
-    return ParamNode(type=type_def, names=name_nodes, is_var=is_var), None, current_token
+    return ParamNode(type=type_def, names=name_nodes, is_var=is_var, lineno=lineno), None, current_token
 
 
 def FormList(tokens, current_token):
@@ -859,6 +870,7 @@ def ProcBody(tokens, current_token):
 
 def ProgramBody(tokens, current_token):
     matched, current_token = Match(TokenType.BEGIN, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'begin'", current_token
     statements, error, current_token = StmList(tokens, current_token)
@@ -867,7 +879,7 @@ def ProgramBody(tokens, current_token):
     matched, current_token = Match(TokenType.END, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'end'", current_token
-    return ProgramBodyNode(children_list=statements), None, current_token
+    return ProgramBodyNode(children_list=statements,lineno=lineno), None, current_token
 
 
 def StmList(tokens, current_token):
@@ -906,6 +918,7 @@ def Stm(tokens, current_token):
 
 def ConditionalStm(tokens, current_token):
     matched, current_token = Match(TokenType.IF, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'if'", current_token
     condition, error, current_token = RelExp(tokens, current_token)
@@ -926,11 +939,12 @@ def ConditionalStm(tokens, current_token):
     matched, current_token = Match(TokenType.FI, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'fi'", current_token
-    return IfNode(condition=condition, then_stm=then_stmts, else_stm=else_stmts), None, current_token
+    return IfNode(condition=condition, then_stm=then_stmts, else_stm=else_stmts,lineno=lineno), None, current_token
 
 
 def LoopStm(tokens, current_token):
     matched, current_token = Match(TokenType.WHILE, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'while'", current_token
     condition, error, current_token = RelExp(tokens, current_token)
@@ -945,11 +959,12 @@ def LoopStm(tokens, current_token):
     matched, current_token = Match(TokenType.ENDWH, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'endwh'", current_token
-    return WhileNode(condition=condition, body=body), None, current_token
+    return WhileNode(condition=condition, body=body, lineno=lineno), None, current_token
 
 
 def InputStm(tokens, current_token):
     matched, current_token = Match(TokenType.READ, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'read'", current_token
     matched, current_token = Match(TokenType.LEFT_PAREN, tokens, current_token)
@@ -961,18 +976,19 @@ def InputStm(tokens, current_token):
     matched, current_token = Match(TokenType.RIGHT_PAREN, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ')'", current_token
-    return ReadNode(var=var_node), None, current_token
+    return ReadNode(var=var_node, lineno=lineno), None, current_token
 
 
 def Invar(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    return IDNode(name=tokens[current_token - 1].Lex), None, current_token
+    return IDNode(name=tokens[current_token - 1].Lex, lineno = tokens[current_token-1].Lineshow), None, current_token
 
 
 def OutputStm(tokens, current_token):
     matched, current_token = Match(TokenType.WRITE, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'write'", current_token
     matched, current_token = Match(TokenType.LEFT_PAREN, tokens, current_token)
@@ -984,11 +1000,12 @@ def OutputStm(tokens, current_token):
     matched, current_token = Match(TokenType.RIGHT_PAREN, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ')'", current_token
-    return WriteNode(exp=exp_node), None, current_token
+    return WriteNode(exp=exp_node, lineno=lineno), None, current_token
 
 
 def ReturnStm(tokens, current_token):
     matched, current_token = Match(TokenType.RETURN, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected 'return'", current_token
     exp_node = None
@@ -996,14 +1013,14 @@ def ReturnStm(tokens, current_token):
         exp_node, error, current_token = Exp(tokens, current_token)
         if error:
             return None, error, current_token
-    return ReturnNode(exp=exp_node), None, current_token
+    return ReturnNode(exp=exp_node, lineno=lineno), None, current_token
 
 
 def AssCall(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    name_node = IDNode(name=tokens[current_token - 1].Lex)
+    name_node = IDNode(name=tokens[current_token - 1].Lex, lineno = tokens[current_token-1].Lineshow)
     return AssCallRest(tokens, current_token, name_node)
 
 
@@ -1016,6 +1033,7 @@ def AssCallRest(tokens, current_token, name_node):
 
 
 def AssignmentRest(tokens, current_token, name_node):
+    lineno = tokens[current_token].Lineshow
     var_suffix, error, current_token = VariMore(tokens, current_token, name_node)
     if error:
         return None, error, current_token
@@ -1026,11 +1044,12 @@ def AssignmentRest(tokens, current_token, name_node):
     if error:
         return None, error, current_token
     var_node = var_suffix if var_suffix is not None else name_node
-    return AssignNode(var=var_node, exp=exp_node), None, current_token
+    return AssignNode(var=var_node, exp=exp_node, lineno=lineno), None, current_token
 
 
 def CallStmRest(tokens, current_token, name_node):
     matched, current_token = Match(TokenType.LEFT_PAREN, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected '('", current_token
     args, error, current_token = ActParamList(tokens, current_token)
@@ -1039,7 +1058,7 @@ def CallStmRest(tokens, current_token, name_node):
     matched, current_token = Match(TokenType.RIGHT_PAREN, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ')'", current_token
-    return CallNode(name=name_node, args=args or []), None, current_token
+    return CallNode(name=name_node, args=args or [], lineno=lineno), None, current_token
 
 
 def ActParamList(tokens, current_token):
@@ -1064,24 +1083,26 @@ def RelExp(tokens, current_token):
     if error:
         return None, error, current_token
     if tokens[current_token].Sem in [TokenType.LESS, TokenType.EQ]:
+        lineno = tokens[current_token].Lineshow
         comp_op, error, current_token = CmpOp(tokens, current_token)
         if error:
             return None, error, current_token
         right, error, current_token = Exp(tokens, current_token)
         if error:
             return None, error, current_token
-        return RelExpNode(CompOp=comp_op, left=left, right=right), None, current_token
-    return RelExpNode(CompOp=None, left=left, right=None), None, current_token
+        return RelExpNode(CompOp=comp_op, left=left, right=right, lineno=lineno), None, current_token
+    return RelExpNode(CompOp=None, left=left, right=None, lineno = tokens[current_token-1].Lineshow), None, current_token
 
 
 def Exp(tokens, current_token):
+    lineno = tokens[current_token].Lineshow
     term_node, error, current_token = Term(tokens, current_token)
     if error:
         return None, error, current_token
     other_terms, error, current_token = OtherTerm(tokens, current_token)
     if error:
         return None, error, current_token
-    return ExpNode(term=term_node, otherterm=other_terms or []), None, current_token
+    return ExpNode(term=term_node, otherterm=other_terms or [], lineno=lineno), None, current_token
 
 
 def OtherTerm(tokens, current_token):
@@ -1098,13 +1119,14 @@ def OtherTerm(tokens, current_token):
 
 
 def Term(tokens, current_token):
+    lineno = tokens[current_token].Lineshow
     factor_node, error, current_token = Factor(tokens, current_token)
     if error:
         return None, error, current_token
     other_factors, error, current_token = OtherFactor(tokens, current_token)
     if error:
         return None, error, current_token
-    return TermNode(factor=factor_node, otherfactor=other_factors or []), None, current_token
+    return TermNode(factor=factor_node, otherfactor=other_factors or [], lineno=lineno), None, current_token
 
 
 def OtherFactor(tokens, current_token):
@@ -1123,16 +1145,17 @@ def OtherFactor(tokens, current_token):
 def Factor(tokens, current_token):
     if tokens[current_token].Sem == TokenType.LEFT_PAREN:
         matched, current_token = Match(TokenType.LEFT_PAREN, tokens, current_token)
+        lineno = tokens[current_token-1].Lineshow
         exp_node, error, current_token = Exp(tokens, current_token)
         if error:
             return None, error, current_token
         matched, current_token = Match(TokenType.RIGHT_PAREN, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ')'", current_token
-        return ParenExpNode(exp=exp_node), None, current_token
+        return ParenExpNode(exp=exp_node, lineno=lineno), None, current_token
     if tokens[current_token].Sem == TokenType.INTC:
         matched, current_token = Match(TokenType.INTC, tokens, current_token)
-        return IntConstNode(value=int(tokens[current_token - 1].Lex)), None, current_token
+        return IntConstNode(value=int(tokens[current_token - 1].Lex), lineno = tokens[current_token-1].Lineshow), None, current_token
     if tokens[current_token].Sem == TokenType.ID:
         return Variable(tokens, current_token)
     return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected factor", current_token
@@ -1142,7 +1165,7 @@ def Variable(tokens, current_token):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    base = IDNode(name=tokens[current_token - 1].Lex)
+    base = IDNode(name=tokens[current_token - 1].Lex, lineno = tokens[current_token-1].Lineshow)
     suffix, error, current_token = VariMore(tokens, current_token, base)
     if error:
         return None, error, current_token
@@ -1152,13 +1175,14 @@ def Variable(tokens, current_token):
 def VariMore(tokens, current_token, base):
     if tokens[current_token].Sem == TokenType.LEFT_SQUARE:
         matched, current_token = Match(TokenType.LEFT_SQUARE, tokens, current_token)
+        lineno = tokens[current_token-1].Lineshow
         index, error, current_token = Exp(tokens, current_token)
         if error:
             return None, error, current_token
         matched, current_token = Match(TokenType.RIGHT_SQUARE, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ']'", current_token
-        return ArrayElemNode(array=base, index=index), None, current_token
+        return ArrayElemNode(array=base, index=index, lineno=lineno), None, current_token
     if tokens[current_token].Sem == TokenType.DOT:
         matched, current_token = Match(TokenType.DOT, tokens, current_token)
         return FieldVar(tokens, current_token, base)
@@ -1169,9 +1193,10 @@ def VariMore(tokens, current_token, base):
 
 def FieldVar(tokens, current_token, record_base):
     matched, current_token = Match(TokenType.ID, tokens, current_token)
+    lineno = tokens[current_token-1].Lineshow
     if not matched:
         return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected identifier", current_token
-    field_id = IDNode(name=tokens[current_token - 1].Lex)
+    field_id = IDNode(name=tokens[current_token - 1].Lex, lineno=lineno)
     if tokens[current_token].Sem == TokenType.LEFT_SQUARE:
         matched, current_token = Match(TokenType.LEFT_SQUARE, tokens, current_token)
         index, error, current_token = Exp(tokens, current_token)
@@ -1180,10 +1205,10 @@ def FieldVar(tokens, current_token, record_base):
         matched, current_token = Match(TokenType.RIGHT_SQUARE, tokens, current_token)
         if not matched:
             return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected ']'", current_token
-        field = ArrayElemNode(array=field_id, index=index)
+        field = ArrayElemNode(array=field_id, index=index, lineno=lineno)
     else:
         field = field_id
-    return RecordFieldNode(record=record_base, field=field), None, current_token
+    return RecordFieldNode(record=record_base, field=field, lineno=lineno), None, current_token
 
 
 def CmpOp(tokens, current_token):
