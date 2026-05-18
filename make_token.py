@@ -82,7 +82,9 @@ class State(Enum):
 # 关键字表
 KEYWORDS = {
     'if': TokenType.IF,
-    'else': TokenType.ELSE,
+    'then': TokenType.THEN,
+    'else':TokenType.ELSE,
+    'fi':TokenType.FI,
     'begin': TokenType.BEGIN,
     'end': TokenType.END,
     'return': TokenType.RETURN,
@@ -90,6 +92,8 @@ KEYWORDS = {
     'read': TokenType.READ,
     'write': TokenType.WRITE,
     'while': TokenType.WHILE,
+    'do':TokenType.DO,
+    'endwh':TokenType.ENDWH,
     'var': TokenType.VAR,
     'array': TokenType.ARRAY,
     'of': TokenType.OF,
@@ -98,7 +102,7 @@ KEYWORDS = {
     'integer': TokenType.INTEGER,
     'char': TokenType.CHAR,
     'type': TokenType.TYPE,
-    'record': TokenType.RECORD,
+    'record': TokenType.RECORD
 }
 
 class Tokenizer:
