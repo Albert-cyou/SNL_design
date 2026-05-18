@@ -511,7 +511,7 @@ def Program(tokens):
         return None, error
     if current_token < len(tokens) and tokens[current_token].Sem == TokenType.DOT:
         current_token += 1
-    return ProgramNode(ProgramHead=PheadK, Declare=DeclareK, StmL=StmLK, lineno=lineno), None, current_token
+    return ProgramNode(ProgramHead=PheadK, Declare=DeclareK, StmL=StmLK, lineno=lineno), None
 
 
 def ProgramHead(tokens, current_token):
@@ -1186,7 +1186,7 @@ def VariMore(tokens, current_token, base):
     if tokens[current_token].Sem == TokenType.DOT:
         matched, current_token = Match(TokenType.DOT, tokens, current_token)
         return FieldVar(tokens, current_token, base)
-    if tokens[current_token].Sem in [TokenType.ASSIGN, TokenType.PLUS, TokenType.MINUS, TokenType.TIMES, TokenType.DIV, TokenType.SEMICOLON, TokenType.COMMA, TokenType.RIGHT_PAREN, TokenType.ELSE, TokenType.END, TokenType.ENDWH, TokenType.FI, TokenType.THEN]:
+    if tokens[current_token].Sem in [TokenType.ASSIGN, TokenType.PLUS, TokenType.MINUS, TokenType.TIMES, TokenType.DIV, TokenType.SEMICOLON, TokenType.COMMA, TokenType.RIGHT_PAREN, TokenType.ELSE, TokenType.END, TokenType.ENDWH, TokenType.FI, TokenType.THEN, TokenType.LESS, TokenType.DO, TokenType.EQ, TokenType.RIGHT_SQUARE]:
         return None, None, current_token
     return None, f"Line {current_line(tokens, current_token)}: Syntax error: expected variable suffix", current_token
 
@@ -1242,22 +1242,33 @@ def MultOp(tokens, current_token):
 
 
 def syntax_analysis(tokens):
-    root, error, _ = Program(tokens)
+    root, error = Program(tokens)
     return root, error
 
 
 if __name__ == "__main__":
-    source_code = """{我是一个注释}
-    program Example
-    type t=integer;k=char;
+    source_code = """program P
+    type t = integer;
     var t v1;
         char v2;
+        array [1..20] of integer a;
     begin
         read(v1);
-        v1:=v1*10;
-        write(v1)
-    end.
+        v1:=5;
+        a[1]:=5
+    end
     """
+    # source_code = """{我是一个注释}
+    # program Example
+    # type t=integer;k=char;
+    # var t v1;
+    #     char v2;
+    # begin
+    #     read(v1);
+    #     v1:=v1*10;
+    #     write(v1)
+    # end.
+    # """
     tokenizer = Tokenizer(source_code)
     tokens = tokenizer.tokenize()
     syntax_tree, syntax_error = syntax_analysis(tokens)
