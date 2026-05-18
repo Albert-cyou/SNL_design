@@ -1,0 +1,785 @@
+{
+    "Program": {
+        "PROGRAM": [
+            "ProgramHead",
+            "DeclarePart",
+            "ProgramBody",
+            "."
+        ]
+    },
+    "ProgramHead": {
+        "PROGRAM": [
+            "PROGRAM",
+            "ProgramName"
+        ]
+    },
+    "ProgramName": {
+        "ID": [
+            "ID"
+        ]
+    },
+    "DeclarePart": {
+        "BEGIN": [
+            "TypeDecpart",
+            "VarDecpart",
+            "ProcDecpart"
+        ],
+        "PROCEDURE": [
+            "TypeDecpart",
+            "VarDecpart",
+            "ProcDecpart"
+        ],
+        "VAR": [
+            "TypeDecpart",
+            "VarDecpart",
+            "ProcDecpart"
+        ],
+        "TYPE": [
+            "TypeDecpart",
+            "VarDecpart",
+            "ProcDecpart"
+        ]
+    },
+    "TypeDecpart": {
+        "BEGIN": [],
+        "PROCEDURE": [],
+        "VAR": [],
+        "TYPE": [
+            "TypeDec"
+        ]
+    },
+    "TypeDec": {
+        "TYPE": [
+            "TYPE",
+            "TypeDecList"
+        ]
+    },
+    "TypeDecList": {
+        "ID": [
+            "TypeId",
+            "=",
+            "TypeDef",
+            ";",
+            "TypeDecMore"
+        ]
+    },
+    "TypeDecMore": {
+        "BEGIN": [],
+        "PROCEDURE": [],
+        "VAR": [],
+        "ID": [
+            "TypeDecList"
+        ]
+    },
+    "TypeId": {
+        "ID": [
+            "ID"
+        ]
+    },
+    "TypeDef": {
+        "CHAR": [
+            "BaseType"
+        ],
+        "INTEGER": [
+            "BaseType"
+        ],
+        "ARRAY": [
+            "StructureType"
+        ],
+        "RECORD": [
+            "StructureType"
+        ],
+        "ID": [
+            "ID"
+        ]
+    },
+    "BaseType": {
+        "INTEGER": [
+            "INTEGER"
+        ],
+        "CHAR": [
+            "CHAR"
+        ]
+    },
+    "StructureType": {
+        "ARRAY": [
+            "ArrayType"
+        ],
+        "RECORD": [
+            "RecType"
+        ]
+    },
+    "ArrayType": {
+        "ARRAY": [
+            "ARRAY",
+            "[",
+            "low",
+            "..",
+            "top",
+            "]",
+            "OF",
+            "BaseType"
+        ]
+    },
+    "Low": {
+        "INTC": [
+            "INTC"
+        ]
+    },
+    "Top": {
+        "INTC": [
+            "INTC"
+        ]
+    },
+    "RecType": {
+        "RECORD": [
+            "RECORD",
+            "FieldDecList",
+            "END"
+        ]
+    },
+    "FieldDecList": {
+        "CHAR": [
+            "BaseType",
+            "IdList",
+            ";",
+            "FieldDecMore"
+        ],
+        "INTEGER": [
+            "BaseType",
+            "IdList",
+            ";",
+            "FieldDecMore"
+        ],
+        "ARRAY": [
+            "ArrayType",
+            "IdList",
+            ";",
+            "FieldDecMore"
+        ]
+    },
+    "FieldDecMore": {
+        "END": [],
+        "CHAR": [
+            "FieldDecList"
+        ],
+        "INTEGER": [
+            "FieldDecList"
+        ],
+        "ARRAY": [
+            "FieldDecList"
+        ]
+    },
+    "IdList": {
+        "ID": [
+            "ID",
+            "IdMore"
+        ]
+    },
+    "IdMore": {
+        ";": [],
+        ",": [
+            ",",
+            "IdList"
+        ]
+    },
+    "VarDecpart": {
+        "BEGIN": [],
+        "PROCEDURE": [],
+        "VAR": [
+            "VarDec"
+        ]
+    },
+    "VarDec": {
+        "VAR": [
+            "VAR",
+            "VarDecList"
+        ]
+    },
+    "VarDecList": {
+        "CHAR": [
+            "TypeDef",
+            "VarIdList",
+            ";",
+            "VarDecMore"
+        ],
+        "ARRAY": [
+            "TypeDef",
+            "VarIdList",
+            ";",
+            "VarDecMore"
+        ],
+        "RECORD": [
+            "TypeDef",
+            "VarIdList",
+            ";",
+            "VarDecMore"
+        ],
+        "INTEGER": [
+            "TypeDef",
+            "VarIdList",
+            ";",
+            "VarDecMore"
+        ],
+        "ID": [
+            "TypeDef",
+            "VarIdList",
+            ";",
+            "VarDecMore"
+        ]
+    },
+    "VarDecMore": {
+        "BEGIN": [],
+        "PROCEDURE": [],
+        "CHAR": [
+            "VarDecList"
+        ],
+        "ARRAY": [
+            "VarDecList"
+        ],
+        "RECORD": [
+            "VarDecList"
+        ],
+        "INTEGER": [
+            "VarDecList"
+        ],
+        "ID": [
+            "VarDecList"
+        ]
+    },
+    "VarIdList": {
+        "ID": [
+            "ID",
+            "VarIdMore"
+        ]
+    },
+    "VarIdMore": {
+        ";": [],
+        ",": [
+            ",",
+            "VarIdList"
+        ]
+    },
+    "ProcDecpart": {
+        "BEGIN": [],
+        "PROCEDURE": [
+            "ProcDec"
+        ]
+    },
+    "ProcDec": {
+        "PROCEDURE": [
+            "PROCEDURE",
+            "ProcName",
+            "(",
+            "ParamList",
+            ")",
+            ";",
+            "ProcDecPart",
+            "ProcBody",
+            "ProcDecMore"
+        ]
+    },
+    "ProcDecMore": {
+        "BEGIN": [],
+        "PROCEDURE": [
+            "ProcDec"
+        ]
+    },
+    "ProcName": {
+        "ID": [
+            "ID"
+        ]
+    },
+    "ParamList": {
+        ")": [],
+        "CHAR": [
+            "ParamDecList"
+        ],
+        "VAR": [
+            "ParamDecList"
+        ],
+        "ARRAY": [
+            "ParamDecList"
+        ],
+        "RECORD": [
+            "ParamDecList"
+        ],
+        "INTEGER": [
+            "ParamDecList"
+        ],
+        "ID": [
+            "ParamDecList"
+        ]
+    },
+    "ParamDecList": {
+        "CHAR": [
+            "Param",
+            "ParamMore"
+        ],
+        "VAR": [
+            "Param",
+            "ParamMore"
+        ],
+        "ARRAY": [
+            "Param",
+            "ParamMore"
+        ],
+        "RECORD": [
+            "Param",
+            "ParamMore"
+        ],
+        "INTEGER": [
+            "Param",
+            "ParamMore"
+        ],
+        "ID": [
+            "Param",
+            "ParamMore"
+        ]
+    },
+    "ParamMore": {
+        ")": [],
+        ";": [
+            ";",
+            "ParamDecList"
+        ]
+    },
+    "Param": {
+        "CHAR": [
+            "TypeDef",
+            "FormList"
+        ],
+        "ARRAY": [
+            "TypeDef",
+            "FormList"
+        ],
+        "RECORD": [
+            "TypeDef",
+            "FormList"
+        ],
+        "INTEGER": [
+            "TypeDef",
+            "FormList"
+        ],
+        "ID": [
+            "TypeDef",
+            "FormList"
+        ],
+        "VAR": [
+            "VAR",
+            "TypeDef",
+            "FormList"
+        ]
+    },
+    "FormList": {
+        "ID": [
+            "ID",
+            "FidMore"
+        ]
+    },
+    "FidMore": {
+        ")": [],
+        ";": [],
+        ",": [
+            ",",
+            "FormList"
+        ]
+    },
+    "ProcDecPart": {
+        "BEGIN": [
+            "DeclarePart"
+        ],
+        "PROCEDURE": [
+            "DeclarePart"
+        ],
+        "VAR": [
+            "DeclarePart"
+        ],
+        "TYPE": [
+            "DeclarePart"
+        ]
+    },
+    "ProcBody": {
+        "BEGIN": [
+            "ProgramBody"
+        ]
+    },
+    "ProgramBody": {
+        "BEGIN": [
+            "BEGIN",
+            "StmList",
+            "END"
+        ]
+    },
+    "StmList": {
+        "WRITE": [
+            "Stm",
+            "StmMore"
+        ],
+        "READ": [
+            "Stm",
+            "StmMore"
+        ],
+        "IF": [
+            "Stm",
+            "StmMore"
+        ],
+        "RETURN": [
+            "Stm",
+            "StmMore"
+        ],
+        "ID": [
+            "Stm",
+            "StmMore"
+        ],
+        "WHILE": [
+            "Stm",
+            "StmMore"
+        ]
+    },
+    "StmMore": {
+        "ENDWH": [],
+        "ELSE": [],
+        "FI": [],
+        "END": [],
+        ";": [
+            ";",
+            "StmList"
+        ]
+    },
+    "Stm": {
+        "IF": [
+            "ConditionalStm"
+        ],
+        "WHILE": [
+            "LoopStm"
+        ],
+        "READ": [
+            "InputStm"
+        ],
+        "WRITE": [
+            "OutputStm"
+        ],
+        "RETURN": [
+            "ReturnStm"
+        ],
+        "ID": [
+            "IDAssCall"
+        ]
+    },
+    "IDAssCall": {
+        "ID": [
+            "ID",
+            "AssCall"
+        ]
+    },
+    "AssCall": {
+        ".": [
+            "AssignmentRest"
+        ],
+        "[": [
+            "AssignmentRest"
+        ],
+        ":=": [
+            "AssignmentRest"
+        ],
+        "(": [
+            "CallStmRest"
+        ]
+    },
+    "AssignmentRest": {
+        "[": [
+            "VariMore",
+            ":=",
+            "Exp"
+        ],
+        ".": [
+            "VariMore",
+            ":=",
+            "Exp"
+        ],
+        ":=": [
+            "VariMore",
+            ":=",
+            "Exp"
+        ]
+    },
+    "ConditionalStm": {
+        "IF": [
+            "IF",
+            "RelExp",
+            "THEN",
+            "StmList",
+            "ELSE",
+            "StmList",
+            "FI"
+        ]
+    },
+    "LoopStm": {
+        "WHILE": [
+            "WHILE",
+            "RelExp",
+            "DO",
+            "StmList",
+            "ENDWH"
+        ]
+    },
+    "InputStm": {
+        "READ": [
+            "READ",
+            "(",
+            "Invar",
+            ")"
+        ]
+    },
+    "Invar": {
+        "ID": [
+            "ID"
+        ]
+    },
+    "OutputStm": {
+        "WRITE": [
+            "WRITE",
+            "(",
+            "Exp",
+            ")"
+        ]
+    },
+    "ReturnStm": {
+        "RETURN": [
+            "RETURN"
+        ]
+    },
+    "CallStmRest": {
+        "(": [
+            "(",
+            "ActParamList",
+            ")"
+        ]
+    },
+    "ActParamList": {
+        ")": [],
+        "(": [
+            "Exp",
+            "ActParamMore"
+        ],
+        "ID": [
+            "Exp",
+            "ActParamMore"
+        ],
+        "INTC": [
+            "Exp",
+            "ActParamMore"
+        ]
+    },
+    "ActParamMore": {
+        ")": [],
+        ",": [
+            ",",
+            "ActParamList"
+        ]
+    },
+    "RelExp": {
+        "(": [
+            "Exp",
+            "OtherRelE"
+        ],
+        "ID": [
+            "Exp",
+            "OtherRelE"
+        ],
+        "INTC": [
+            "Exp",
+            "OtherRelE"
+        ]
+    },
+    "OtherRelE": {
+        "<": [
+            "CmpOp",
+            "Exp"
+        ],
+        "=": [
+            "CmpOp",
+            "Exp"
+        ]
+    },
+    "Exp": {
+        "(": [
+            "Term",
+            "OtherTerm"
+        ],
+        "ID": [
+            "Term",
+            "OtherTerm"
+        ],
+        "INTC": [
+            "Term",
+            "OtherTerm"
+        ]
+    },
+    "OtherTerm": {
+        "END": [],
+        "=": [],
+        "ELSE": [],
+        "<": [],
+        "]": [],
+        "THEN": [],
+        "ENDWH": [],
+        ",": [],
+        ")": [],
+        "DO": [],
+        "FI": [],
+        ";": [],
+        "+": [
+            "AddOp",
+            "Exp"
+        ],
+        "-": [
+            "AddOp",
+            "Exp"
+        ]
+    },
+    "Term": {
+        "(": [
+            "Factor",
+            "OtherFactor"
+        ],
+        "ID": [
+            "Factor",
+            "OtherFactor"
+        ],
+        "INTC": [
+            "Factor",
+            "OtherFactor"
+        ]
+    },
+    "OtherFactor": {
+        "FI": [],
+        "+": [],
+        "END": [],
+        "=": [],
+        "ELSE": [],
+        "<": [],
+        "]": [],
+        "THEN": [],
+        "ENDWH": [],
+        ",": [],
+        ")": [],
+        "DO": [],
+        "-": [],
+        ";": [],
+        "*": [
+            "MultOp",
+            "Term"
+        ],
+        "/": [
+            "MultOp",
+            "Term"
+        ]
+    },
+    "Factor": {
+        "(": [
+            "(",
+            "Exp",
+            ")"
+        ],
+        "INTC": [
+            "INTC"
+        ],
+        "ID": [
+            "Variable"
+        ]
+    },
+    "Variable": {
+        "ID": [
+            "ID",
+            "VariMore"
+        ]
+    },
+    "VariMore": {
+        "*": [],
+        "+": [],
+        "END": [],
+        "<": [],
+        "/": [],
+        "THEN": [],
+        ")": [],
+        "-": [],
+        ";": [],
+        "=": [],
+        "ELSE": [],
+        "]": [],
+        ":=": [],
+        "ENDWH": [],
+        ",": [],
+        "DO": [],
+        "FI": [],
+        "[": [
+            "[",
+            "Exp",
+            "]"
+        ],
+        ".": [
+            ".",
+            "FieldVar"
+        ]
+    },
+    "FieldVar": {
+        "ID": [
+            "ID",
+            "FieldVarMore"
+        ]
+    },
+    "FieldVarMore": {
+        "*": [],
+        "+": [],
+        "END": [],
+        "<": [],
+        "/": [],
+        "THEN": [],
+        ")": [],
+        "-": [],
+        ";": [],
+        "=": [],
+        "ELSE": [],
+        "]": [],
+        ":=": [],
+        "ENDWH": [],
+        ",": [],
+        "DO": [],
+        "FI": [],
+        "[": [
+            "[",
+            "Exp",
+            "]"
+        ]
+    },
+    "CmpOp": {
+        "<": [
+            "<"
+        ],
+        "=": [
+            "="
+        ]
+    },
+    "AddOp": {
+        "+": [
+            "+"
+        ],
+        "-": [
+            "-"
+        ]
+    },
+    "MultOp": {
+        "*": [
+            "*"
+        ],
+        "/": [
+            "/"
+        ]
+    }
+    ,
+    "build_actions": {
+        "Program": "act_Program"
+    }
+}
