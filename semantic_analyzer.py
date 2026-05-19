@@ -59,6 +59,7 @@ class Symbol():
     TypePtr: Ptr
     kind: SymKind
     name: str = field(default="", kw_only=True)
+    idx: Optional[int] = field(default=None, kw_only=True)
 
 # 类型标识符
 @dataclass
@@ -88,16 +89,61 @@ class symbol_table():
     Type: List[TypeSym] = field(default_factory=list)
     Var : List[VarSym] = field(default_factory=list)
     proc: List[ProcSym] = field(default_factory=list)
+    _symbols_by_idx: Dict[int, Symbol] = field(default_factory=dict, init=False, repr=False)
+    _idx_by_name: Dict[str, List[int]] = field(default_factory=dict, init=False, repr=False)
+    _next_idx: int = field(default=0, init=False, repr=False)
 
-    def get(self, pos):
-        if pos <= len(self.Type):
-            return self.Type[pos]
-        elif pos > len(self.Type) and pos <= len(self.Type) + len(self.Var):
-            return self.Var[pos - len(self.Type)]
-        elif pos > len(self.Type) + len(self.Var) and pos <= len(self.Type) + len(self.Var) + len(self.proc):
-            return self.proc[pos - len(self.Type) - len(self.Var)]
-        else:
+    def _register(self, entry: Symbol) -> int:
+        entry.idx = self._next_idx
+        self._symbols_by_idx[entry.idx] = entry
+        self._idx_by_name.setdefault(entry.name, []).append(entry.idx)
+        self._next_idx += 1
+        return entry.idx
+
+    def add_type(self, entry: TypeSym) -> int:
+        idx = self._register(entry)
+        self.Type.append(entry)
+        return idx
+
+    def add_var(self, entry: VarSym) -> int:
+        idx = self._register(entry)
+        self.Var.append(entry)
+        return idx
+
+    def add_proc(self, entry: ProcSym) -> int:
+        idx = self._register(entry)
+        self.proc.append(entry)
+        return idx
+
+    def get(self, idx: int) -> Optional[Symbol]:
+        return self._symbols_by_idx.get(idx)
+
+    def get_idx(self, name: str) -> Optional[int]:
+        indexes = self._idx_by_name.get(name)
+        if not indexes:
             return None
+        return indexes[-1]
+
+    def get_all_idx(self, name: str) -> List[int]:
+        return list(self._idx_by_name.get(name, []))
+
+    def get_by_name(self, name: str) -> Optional[Symbol]:
+        idx = self.get_idx(name)
+        return self.get(idx) if idx is not None else None
+
+    def get_var(self, idx: int) -> Optional[VarSym]:
+        entry = self.get(idx)
+        return entry if isinstance(entry, VarSym) else None
+
+    def get_var_idx(self, name: str) -> Optional[int]:
+        for idx in reversed(self._idx_by_name.get(name, [])):
+            if isinstance(self.get(idx), VarSym):
+                return idx
+        return None
+
+    def get_var_by_name(self, name: str) -> Optional[VarSym]:
+        idx = self.get_var_idx(name)
+        return self.get_var(idx) if idx is not None else None
 
     def _ptr_to_str(self, ptr: Ptr) -> str:
         if ptr is None:
@@ -123,9 +169,9 @@ class symbol_table():
 
         if self.Type:
             rows = [["Idx", "Name", "Kind", "Type", "Size"]]
-            for idx, entry in enumerate(self.Type):
+            for entry in self.Type:
                 rows.append([
-                    str(idx),
+                    str(entry.idx),
                     entry.name,
                     entry.kind.name,
                     self._ptr_to_str(entry.TypePtr),
@@ -137,9 +183,9 @@ class symbol_table():
 
         if self.Var:
             rows = [["Idx", "Name", "Kind", "Type", "Size", "Access", "Level", "Off"]]
-            for idx, entry in enumerate(self.Var):
+            for entry in self.Var:
                 rows.append([
-                    str(idx),
+                    str(entry.idx),
                     entry.name,
                     entry.kind.name,
                     self._ptr_to_str(entry.TypePtr),
@@ -154,10 +200,10 @@ class symbol_table():
 
         if self.proc:
             rows = [["Idx", "Name", "Kind", "Type", "Parms", "Level", "Size", "Code"]]
-            for idx, entry in enumerate(self.proc):
+            for entry in self.proc:
                 parm_str = ",".join(str(p) for p in entry.Parm)
                 rows.append([
-                    str(idx),
+                    str(entry.idx),
                     entry.name,
                     entry.kind.name,
                     self._ptr_to_str(entry.TypePtr),
@@ -216,7 +262,7 @@ def _add_var_declaration(var_decl: syntax.VarDecNode, symtab: symbol_table, type
         names = [var_decl.name]
 
     for name_node in names:
-        symtab.Var.append(VarSym(
+        symtab.add_var(VarSym(
             TypePtr=var_type,
             kind=SymKind.varKind,
             name=name_node.name,
@@ -231,7 +277,7 @@ def _add_procedure(proc_decl: syntax.ProcDecNode, symtab: symbol_table, type_map
     for param in proc_decl.params:
         param_type = _type_node_to_ptr(param.type, type_map)
         for name_node in param.names:
-            symtab.Var.append(VarSym(
+            param_idx = symtab.add_var(VarSym(
                 name=name_node.name,
                 TypePtr=param_type,
                 kind=SymKind.varKind,
@@ -239,7 +285,7 @@ def _add_procedure(proc_decl: syntax.ProcDecNode, symtab: symbol_table, type_map
                 Level=level + 1,
                 Off=0
             ))
-            param_positions.append(len(symtab.Type) + len(symtab.Var) - 1)
+            param_positions.append(param_idx)
 
     proc_sym = ProcSym(
         TypePtr=Ptr(size=0, kind=Typekind.voidTy),
@@ -250,7 +296,7 @@ def _add_procedure(proc_decl: syntax.ProcDecNode, symtab: symbol_table, type_map
         size=0,
         code=-1
     )
-    symtab.proc.append(proc_sym)
+    symtab.add_proc(proc_sym)
 
     if proc_decl.declare:
         _populate_declare(proc_decl.declare, symtab, type_map, level + 1)
@@ -260,7 +306,7 @@ def _populate_declare(declare: syntax.DeclareNode, symtab: symbol_table, type_ma
     if declare.type_dec_head:
         for type_decl in declare.type_dec_head.nodes:
             type_ptr = _type_node_to_ptr(type_decl.type_def, type_map)
-            symtab.Type.append(TypeSym(TypePtr=type_ptr, kind=SymKind.typeKind, name=type_decl.name.name))
+            symtab.add_type(TypeSym(TypePtr=type_ptr, kind=SymKind.typeKind, name=type_decl.name.name))
             type_map[type_decl.name.name] = type_ptr
 
     if declare.var_dec_head:
@@ -564,7 +610,7 @@ def _populate_declare_semantic(declare: syntax.DeclareNode, scope: SemanticScope
             if type_ptr is None:
                 type_ptr = Ptr(kind=Typekind.intTy, size=1)
             scope.types[type_decl.name.name] = type_ptr
-            symtab.Type.append(TypeSym(TypePtr=type_ptr, kind=SymKind.typeKind, name=type_decl.name.name))
+            symtab.add_type(TypeSym(TypePtr=type_ptr, kind=SymKind.typeKind, name=type_decl.name.name))
     if declare.var_dec_head:
         for var_decl in declare.var_dec_head.nodes:
             var_type = _resolve_type(var_decl.type, scope, errors)
@@ -575,15 +621,16 @@ def _populate_declare_semantic(declare: syntax.DeclareNode, scope: SemanticScope
                 if scope.has_name(name_node.name):
                     _report_error(errors, name_node, f"duplicate definition '{name_node.name}'")
                     continue
-                symtab.Var.append(VarSym(TypePtr=var_type, kind=SymKind.varKind, name=name_node.name, Access=True, Level=level, Off=0))
-                scope.vars[name_node.name] = symtab.Var[-1]
+                var_sym = VarSym(TypePtr=var_type, kind=SymKind.varKind, name=name_node.name, Access=True, Level=level, Off=0)
+                symtab.add_var(var_sym)
+                scope.vars[name_node.name] = var_sym
     if declare.proc_dec_head:
         for proc_decl in declare.proc_dec_head.nodes:
             if proc_decl.name and scope.has_name(proc_decl.name.name):
                 _report_error(errors, proc_decl.name, f"duplicate definition '{proc_decl.name.name}'")
                 continue
             proc_sym = ProcSym(TypePtr=Ptr(kind=Typekind.voidTy, size=0), kind=SymKind.procKind, name=proc_decl.name.name if proc_decl.name else "", Level=level, Parm=[], size=0, code=-1)
-            symtab.proc.append(proc_sym)
+            symtab.add_proc(proc_sym)
             scope.procs[proc_decl.name.name] = proc_decl
             child_scope = SemanticScope(parent=scope)
             for param in proc_decl.params:
@@ -594,9 +641,10 @@ def _populate_declare_semantic(declare: syntax.DeclareNode, scope: SemanticScope
                     if child_scope.has_name(name_node.name):
                         _report_error(errors, name_node, f"duplicate definition '{name_node.name}' in procedure '{proc_decl.name.name}'")
                         continue
-                    symtab.Var.append(VarSym(TypePtr=param_type, kind=SymKind.varKind, name=name_node.name, Access=not param.is_var, Level=level + 1, Off=0))
-                    child_scope.vars[name_node.name] = symtab.Var[-1]
-                    proc_sym.Parm.append(len(symtab.Type) + len(symtab.Var) - 1)
+                    var_sym = VarSym(TypePtr=param_type, kind=SymKind.varKind, name=name_node.name, Access=not param.is_var, Level=level + 1, Off=0)
+                    param_idx = symtab.add_var(var_sym)
+                    child_scope.vars[name_node.name] = var_sym
+                    proc_sym.Parm.append(param_idx)
             if proc_decl.declare:
                 _populate_declare_semantic(proc_decl.declare, child_scope, symtab, errors, level + 1)
             if proc_decl.body:
