@@ -5,13 +5,10 @@
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
-import importlib
 
 
-syntax = importlib.import_module("2_recursive_descent_parser")
-make_token = importlib.import_module("1_lexer")
-Token = make_token.Token
-TokenType = make_token.TokenType
+import recursive_descent_parser as syntax
+from lexer import Token, TokenType
 
 @dataclass
 class TokenValue:

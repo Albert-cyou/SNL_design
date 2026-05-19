@@ -6,10 +6,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum, auto
-import importlib
-
-
-syntax = importlib.import_module("2_recursive_descent_parser")
+import recursive_descent_parser as syntax
 
 
 # kind，表示标识符的类别

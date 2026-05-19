@@ -2,15 +2,14 @@ import io
 import tkinter as tk
 from contextlib import redirect_stdout
 from tkinter import ttk
-import importlib
 
 
 try:
-    make_token = importlib.import_module("1_lexer")
-    syntax = importlib.import_module("2_recursive_descent_parser")
-    semantic_analysis = importlib.import_module("3_semantic_analyzer")
-    ll1_parser = importlib.import_module("ll1_parser")
-    Tokenizer = make_token.Tokenizer
+    from lexer import Tokenizer
+    import recursive_descent_parser as syntax
+    import semantic_analyzer as semantic_analysis
+    import ll1_parser
+
     recursive_syntax_analysis = syntax.syntax_analysis
     ll1_syntax_analysis = ll1_parser.Program
     semantic_analyze = semantic_analysis.semantic_analysis
@@ -21,11 +20,11 @@ except (ImportError, FileNotFoundError, AttributeError):
         def tokenize(self):
             return []
     def recursive_syntax_analysis(tokens):
-        return None, "依赖模块未找到，请检查 1_lexer.py 和 2_recursive_descent_parser.py"
+        return None, "依赖模块未找到，请检查 lexer.py 和 recursive_descent_parser.py"
     def ll1_syntax_analysis(tokens):
         return None, "依赖模块未找到，请检查 ll1_parser.py"
     def semantic_analyze(program):
-        return None, ["依赖模块未找到，请检查 3_semantic_analyzer.py"]
+        return None, ["依赖模块未找到，请检查 semantic_analyzer.py"]
 
 
 class SNLAnalyzerApp(tk.Tk):

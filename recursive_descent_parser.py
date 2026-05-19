@@ -5,13 +5,7 @@
 from dataclasses import dataclass, field, fields
 from typing import List, Optional, Union
 from enum import Enum, auto
-import importlib
-
-
-make_token = importlib.import_module("1_lexer")
-TokenType = make_token.TokenType
-Token = make_token.Token
-Tokenizer = make_token.Tokenizer
+from lexer import TokenType, Token, Tokenizer
 
 
 class ExpType(Enum):

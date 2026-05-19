@@ -1,12 +1,10 @@
 from dataclasses import dataclass, field
 from typing import List
-import importlib
 
 
-make_token = importlib.import_module("1_lexer")
-syntax = importlib.import_module("2_recursive_descent_parser")
-semantic_analysis = importlib.import_module("3_semantic_analyzer")
-Tokenizer = make_token.Tokenizer
+from lexer import Tokenizer
+import recursive_descent_parser as syntax
+import semantic_analyzer as semantic_analysis
 
 
 @dataclass
