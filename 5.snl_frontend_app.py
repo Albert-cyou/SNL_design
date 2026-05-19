@@ -2,12 +2,27 @@ import io
 import sys
 import tkinter as tk
 from contextlib import redirect_stdout
+from pathlib import Path
 from tkinter import ttk
+import importlib.util
 
-# 如果你本地没有这两个模块，运行会报错，需要确保文件存在
+
+def load_stage_module(module_name: str, filename: str):
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    module_path = Path(__file__).with_name(filename)
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 try:
-    from make_token import Tokenizer
-    from syntax import syntax_analysis
+    make_token = load_stage_module("make_token", "1.lexer.py")
+    syntax = load_stage_module("syntax", "2.recursive_descent_parser.py")
+    Tokenizer = make_token.Tokenizer
+    syntax_analysis = syntax.syntax_analysis
 except ImportError:
     class Tokenizer:
         def __init__(self, code):
@@ -15,7 +30,7 @@ except ImportError:
         def tokenize(self):
             return []
     def syntax_analysis(tokens):
-        return None, "依赖模块未找到，请检查 make_token.py 和 syntax.py"
+        return None, "依赖模块未找到，请检查 1.lexer.py 和 2.recursive_descent_parser.py"
 
 
 class SNLAnalyzerApp(tk.Tk):

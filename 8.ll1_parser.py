@@ -4,10 +4,27 @@
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import importlib.util
+import sys
 
-import syntax
-from make_token import Token, TokenType
+
+def _load_stage_module(module_name: str, filename: str):
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    module_path = Path(__file__).with_name(filename)
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+syntax = _load_stage_module("syntax", "2.recursive_descent_parser.py")
+make_token = _load_stage_module("make_token", "1.lexer.py")
+Token = make_token.Token
+TokenType = make_token.TokenType
 
 @dataclass
 class TokenValue:
