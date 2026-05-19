@@ -6,23 +6,10 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum, auto
-from pathlib import Path
-import importlib.util
-import sys
+import importlib
 
 
-def _load_stage_module(module_name: str, filename: str):
-    if module_name in sys.modules:
-        return sys.modules[module_name]
-    module_path = Path(__file__).with_name(filename)
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-syntax = _load_stage_module("syntax", "2.recursive_descent_parser.py")
+syntax = importlib.import_module("2_recursive_descent_parser")
 
 
 # kind，表示标识符的类别

@@ -1,24 +1,11 @@
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import List
-import importlib.util
-import sys
+import importlib
 
 
-def load_stage_module(module_name: str, filename: str):
-    if module_name in sys.modules:
-        return sys.modules[module_name]
-    module_path = Path(__file__).with_name(filename)
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-make_token = load_stage_module("make_token", "1.lexer.py")
-syntax = load_stage_module("syntax", "2.recursive_descent_parser.py")
-semantic_analysis = load_stage_module("semantic_analysis", "3.semantic_analyzer.py")
+make_token = importlib.import_module("1_lexer")
+syntax = importlib.import_module("2_recursive_descent_parser")
+semantic_analysis = importlib.import_module("3_semantic_analyzer")
 Tokenizer = make_token.Tokenizer
 
 

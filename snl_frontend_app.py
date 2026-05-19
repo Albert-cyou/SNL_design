@@ -1,36 +1,31 @@
 import io
-import sys
 import tkinter as tk
 from contextlib import redirect_stdout
-from pathlib import Path
 from tkinter import ttk
-import importlib.util
-
-
-def load_stage_module(module_name: str, filename: str):
-    if module_name in sys.modules:
-        return sys.modules[module_name]
-    module_path = Path(__file__).with_name(filename)
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
+import importlib
 
 
 try:
-    make_token = load_stage_module("make_token", "1.lexer.py")
-    syntax = load_stage_module("syntax", "2.recursive_descent_parser.py")
+    make_token = importlib.import_module("1_lexer")
+    syntax = importlib.import_module("2_recursive_descent_parser")
+    semantic_analysis = importlib.import_module("3_semantic_analyzer")
+    ll1_parser = importlib.import_module("ll1_parser")
     Tokenizer = make_token.Tokenizer
-    syntax_analysis = syntax.syntax_analysis
-except ImportError:
+    recursive_syntax_analysis = syntax.syntax_analysis
+    ll1_syntax_analysis = ll1_parser.Program
+    semantic_analyze = semantic_analysis.semantic_analysis
+except (ImportError, FileNotFoundError, AttributeError):
     class Tokenizer:
         def __init__(self, code):
             self.code = code
         def tokenize(self):
             return []
-    def syntax_analysis(tokens):
-        return None, "依赖模块未找到，请检查 1.lexer.py 和 2.recursive_descent_parser.py"
+    def recursive_syntax_analysis(tokens):
+        return None, "依赖模块未找到，请检查 1_lexer.py 和 2_recursive_descent_parser.py"
+    def ll1_syntax_analysis(tokens):
+        return None, "依赖模块未找到，请检查 ll1_parser.py"
+    def semantic_analyze(program):
+        return None, ["依赖模块未找到，请检查 3_semantic_analyzer.py"]
 
 
 class SNLAnalyzerApp(tk.Tk):
@@ -172,8 +167,7 @@ class SNLAnalyzerApp(tk.Tk):
         option_frame.pack(fill=tk.X, padx=8, pady=8)
 
         ttk.Radiobutton(option_frame, text="递归下降法", value="recursive", variable=self.parser_mode, command=self._schedule_parse).pack(side=tk.LEFT, padx=6, pady=6)
-        ttk.Radiobutton(option_frame, text="LL(1) (未实现)", value="ll1", variable=self.parser_mode, command=self._schedule_parse).pack(side=tk.LEFT, padx=6, pady=6)
-        ttk.Button(option_frame, text="立即分析", command=self._parse_source).pack(side=tk.RIGHT, padx=6, pady=6)
+        ttk.Radiobutton(option_frame, text="LL(1) 法", value="ll1", variable=self.parser_mode, command=self._schedule_parse).pack(side=tk.LEFT, padx=6, pady=6)
 
         self.tab_control = ttk.Notebook(parent)
         self.tab_control.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
@@ -181,7 +175,7 @@ class SNLAnalyzerApp(tk.Tk):
         self._build_tokens_tab()
         self._build_syntax_tree_tab()
         self._build_semantic_tab()
-        self._build_intermediate_tab()
+        self._build_future_stage_tabs()
         self._build_message_bar(parent)
 
     def _build_tokens_tab(self):
@@ -220,18 +214,23 @@ class SNLAnalyzerApp(tk.Tk):
         self.tab_control.add(semantic_tab, text="语义分析")
 
         self.semantic_text = tk.Text(semantic_tab, wrap=tk.WORD, font=("Consolas", 11), state=tk.NORMAL)
-        self.semantic_text.insert("1.0", "语义分析功能待后续扩展。")
+        self.semantic_text.insert("1.0", "等待输入源代码。")
         self.semantic_text.configure(state=tk.DISABLED)
         self.semantic_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-    def _build_intermediate_tab(self):
-        intermediate_tab = ttk.Frame(self.tab_control)
-        self.tab_control.add(intermediate_tab, text="中间代码生成")
+    def _build_future_stage_tabs(self):
+        self.intermediate_text = self._build_placeholder_tab("中间代码生成")
+        self.optimized_text = self._build_placeholder_tab("中间代码优化")
+        self.target_text = self._build_placeholder_tab("目标代码生成")
 
-        self.intermediate_text = tk.Text(intermediate_tab, wrap=tk.WORD, font=("Consolas", 11), state=tk.NORMAL)
-        self.intermediate_text.insert("1.0", "中间代码生成功能待后续扩展。")
-        self.intermediate_text.configure(state=tk.DISABLED)
-        self.intermediate_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+    def _build_placeholder_tab(self, title):
+        tab = ttk.Frame(self.tab_control)
+        self.tab_control.add(tab, text=title)
+        text = tk.Text(tab, wrap=tk.WORD, font=("Consolas", 11), state=tk.NORMAL)
+        text.insert("1.0", f"{title}模块预留，等待后续实现。")
+        text.configure(state=tk.DISABLED)
+        text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        return text
 
     def _build_message_bar(self, parent):
         message_frame = ttk.Frame(parent)
@@ -262,21 +261,33 @@ class SNLAnalyzerApp(tk.Tk):
         tokens = []
         syntax_tree = None
         syntax_error = None
+        semantic_errors = []
+        symtab = None
 
         if source_code.strip():
             tokenizer = Tokenizer(source_code)
             tokens = tokenizer.tokenize()
             if self.parser_mode.get() == "recursive":
-                syntax_tree, syntax_error = syntax_analysis(tokens)
+                syntax_tree, syntax_error = recursive_syntax_analysis(tokens)
             else:
-                syntax_tree = None
-                syntax_error = "LL(1) 分析器尚未实现。请选择递归下降法或等待后续实现。"
-            message = syntax_error if syntax_error else "分析完成。"
+                syntax_tree, syntax_error = ll1_syntax_analysis(tokens)
+
+            if syntax_error is None and syntax_tree is not None:
+                symtab, semantic_errors = semantic_analyze(syntax_tree)
+
+            if syntax_error:
+                message = syntax_error
+            elif semantic_errors:
+                message = f"语义分析发现 {len(semantic_errors)} 个错误。"
+            else:
+                message = "词法、语法、语义分析完成。"
         else:
             message = "请输入 SNL 代码以开始分析。"
 
         self._update_token_table(tokens)
         self._update_syntax_tree(syntax_tree, syntax_error)
+        self._update_semantic_result(symtab, semantic_errors, syntax_error, bool(source_code.strip()))
+        self._update_future_stage_tabs(syntax_error, semantic_errors, bool(source_code.strip()))
         self._update_messages(message)
 
     def _update_token_table(self, tokens):
@@ -298,12 +309,53 @@ class SNLAnalyzerApp(tk.Tk):
             self.syntax_tree_text.insert("1.0", printed)
         self.syntax_tree_text.configure(state=tk.DISABLED)
 
+    def _update_semantic_result(self, symtab, semantic_errors, syntax_error, has_source):
+        self.semantic_text.configure(state=tk.NORMAL)
+        self.semantic_text.delete("1.0", tk.END)
+
+        if not has_source:
+            self.semantic_text.insert("1.0", "等待输入源代码。")
+        elif syntax_error:
+            self.semantic_text.insert("1.0", "语法分析未通过，暂不执行语义分析。")
+        elif semantic_errors:
+            self.semantic_text.insert("1.0", "\n".join(semantic_errors))
+        elif symtab is not None:
+            self.semantic_text.insert("1.0", self._get_symbol_table_text(symtab))
+        else:
+            self.semantic_text.insert("1.0", "语义分析完成，未发现错误。")
+
+        self.semantic_text.configure(state=tk.DISABLED)
+
+    def _update_future_stage_tabs(self, syntax_error, semantic_errors, has_source):
+        if not has_source:
+            status = "等待输入源代码。"
+        elif syntax_error:
+            status = "前序语法分析未通过，暂不执行该阶段。"
+        elif semantic_errors:
+            status = "前序语义分析未通过，暂不执行该阶段。"
+        else:
+            status = "前序分析已通过。本模块预留，等待后续实现。"
+
+        for text in (self.intermediate_text, self.optimized_text, self.target_text):
+            text.configure(state=tk.NORMAL)
+            text.delete("1.0", tk.END)
+            text.insert("1.0", status)
+            text.configure(state=tk.DISABLED)
+
     @staticmethod
     def _get_tree_text(syntax_tree):
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             syntax_tree.print()
         return buffer.getvalue()
+
+    @staticmethod
+    def _get_symbol_table_text(symtab):
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            symtab.print_table()
+        text = buffer.getvalue()
+        return text if text.strip() else "语义分析完成，符号表为空。"
 
     def _update_messages(self, message):
         self.message_label.config(text=message)
