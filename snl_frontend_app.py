@@ -1,3 +1,6 @@
+# 前端演示
+# 输入代码进行分析
+
 import io
 import tkinter as tk
 from contextlib import redirect_stdout
@@ -9,10 +12,12 @@ try:
     import recursive_descent_parser as syntax
     import semantic_analyzer as semantic_analysis
     import ll1_parser
+    import inter_code
 
     recursive_syntax_analysis = syntax.syntax_analysis
     ll1_syntax_analysis = ll1_parser.Program
     semantic_analyze = semantic_analysis.semantic_analysis
+    generate_intermediate_code = inter_code.generate_intermediate_code
 except (ImportError, FileNotFoundError, AttributeError):
     class Tokenizer:
         def __init__(self, code):
@@ -25,6 +30,8 @@ except (ImportError, FileNotFoundError, AttributeError):
         return None, "依赖模块未找到，请检查 ll1_parser.py"
     def semantic_analyze(program):
         return None, ["依赖模块未找到，请检查 semantic_analyzer.py"]
+    def generate_intermediate_code(program, symtab):
+        return [], symtab
 
 
 class SNLAnalyzerApp(tk.Tk):
@@ -262,6 +269,8 @@ class SNLAnalyzerApp(tk.Tk):
         syntax_error = None
         semantic_errors = []
         symtab = None
+        quads = []
+        inter_error = None
 
         if source_code.strip():
             tokenizer = Tokenizer(source_code)
@@ -274,19 +283,27 @@ class SNLAnalyzerApp(tk.Tk):
             if syntax_error is None and syntax_tree is not None:
                 symtab, semantic_errors = semantic_analyze(syntax_tree)
 
+            if not syntax_error and not semantic_errors and syntax_tree is not None and symtab is not None:
+                try:
+                    quads, symtab = generate_intermediate_code(syntax_tree, symtab)
+                except Exception as exc:
+                    inter_error = f"中间代码生成错误：{exc}"
+
             if syntax_error:
                 message = syntax_error
             elif semantic_errors:
                 message = f"语义分析发现 {len(semantic_errors)} 个错误。"
+            elif inter_error:
+                message = inter_error
             else:
-                message = "词法、语法、语义分析完成。"
+                message = "词法、语法、语义和中间代码生成完成。"
         else:
             message = "请输入 SNL 代码以开始分析。"
 
         self._update_token_table(tokens)
         self._update_syntax_tree(syntax_tree, syntax_error)
         self._update_semantic_result(symtab, semantic_errors, syntax_error, bool(source_code.strip()))
-        self._update_future_stage_tabs(syntax_error, semantic_errors, bool(source_code.strip()))
+        self._update_future_stage_tabs(syntax_error, semantic_errors, inter_error, quads, bool(source_code.strip()))
         self._update_messages(message)
 
     def _update_token_table(self, tokens):
@@ -325,20 +342,32 @@ class SNLAnalyzerApp(tk.Tk):
 
         self.semantic_text.configure(state=tk.DISABLED)
 
-    def _update_future_stage_tabs(self, syntax_error, semantic_errors, has_source):
+    def _update_future_stage_tabs(self, syntax_error, semantic_errors, inter_error, quads, has_source):
         if not has_source:
-            status = "等待输入源代码。"
+            intermediate_status = "等待输入源代码。"
+            future_status = "等待输入源代码。"
         elif syntax_error:
-            status = "前序语法分析未通过，暂不执行该阶段。"
+            intermediate_status = "前序语法分析未通过，暂不执行中间代码生成。"
+            future_status = "前序语法分析未通过，暂不执行该阶段。"
         elif semantic_errors:
-            status = "前序语义分析未通过，暂不执行该阶段。"
+            intermediate_status = "前序语义分析未通过，暂不执行中间代码生成。"
+            future_status = "前序语义分析未通过，暂不执行该阶段。"
+        elif inter_error:
+            intermediate_status = inter_error
+            future_status = "中间代码生成未通过，暂不执行该阶段。"
         else:
-            status = "前序分析已通过。本模块预留，等待后续实现。"
+            intermediate_status = self._get_quadruple_text(quads)
+            future_status = "中间代码已生成。本模块预留，等待后续实现。"
 
-        for text in (self.intermediate_text, self.optimized_text, self.target_text):
+        self.intermediate_text.configure(state=tk.NORMAL)
+        self.intermediate_text.delete("1.0", tk.END)
+        self.intermediate_text.insert("1.0", intermediate_status)
+        self.intermediate_text.configure(state=tk.DISABLED)
+
+        for text in (self.optimized_text, self.target_text):
             text.configure(state=tk.NORMAL)
             text.delete("1.0", tk.END)
-            text.insert("1.0", status)
+            text.insert("1.0", future_status)
             text.configure(state=tk.DISABLED)
 
     @staticmethod
@@ -355,6 +384,12 @@ class SNLAnalyzerApp(tk.Tk):
             symtab.print_table()
         text = buffer.getvalue()
         return text if text.strip() else "语义分析完成，符号表为空。"
+
+    @staticmethod
+    def _get_quadruple_text(quads):
+        if not quads:
+            return "中间代码生成完成，但四元式列表为空。"
+        return "\n".join(f"{index:03}: {quad}" for index, quad in enumerate(quads))
 
     def _update_messages(self, message):
         self.message_label.config(text=message)
