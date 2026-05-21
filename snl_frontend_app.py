@@ -4,7 +4,7 @@
 import io
 import tkinter as tk
 from contextlib import redirect_stdout
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 
 
 try:
@@ -13,11 +13,15 @@ try:
     import semantic_analyzer as semantic_analysis
     import ll1_parser
     import inter_code
+    import inter_code_optimizer
+    import mips_generator
 
     recursive_syntax_analysis = syntax.syntax_analysis
     ll1_syntax_analysis = ll1_parser.Program
     semantic_analyze = semantic_analysis.semantic_analysis
     generate_intermediate_code = inter_code.generate_intermediate_code
+    optimize_quadruples = inter_code_optimizer.optimize_quadruples
+    generate_mips = mips_generator.generate_mips
 except (ImportError, FileNotFoundError, AttributeError):
     class Tokenizer:
         def __init__(self, code):
@@ -32,6 +36,10 @@ except (ImportError, FileNotFoundError, AttributeError):
         return None, ["依赖模块未找到，请检查 semantic_analyzer.py"]
     def generate_intermediate_code(program, symtab):
         return [], symtab
+    def optimize_quadruples(quads):
+        return quads
+    def generate_mips(quads, symtab):
+        return ""
 
 
 class SNLAnalyzerApp(tk.Tk):
@@ -43,6 +51,7 @@ class SNLAnalyzerApp(tk.Tk):
 
         self.parser_mode = tk.StringVar(value="recursive")
         self._parse_after_id = None
+        self.current_asm_code = ""
 
         # 高亮标签样式
         self.highlight_tag = "current_line"
@@ -175,6 +184,9 @@ class SNLAnalyzerApp(tk.Tk):
         ttk.Radiobutton(option_frame, text="递归下降法", value="recursive", variable=self.parser_mode, command=self._schedule_parse).pack(side=tk.LEFT, padx=6, pady=6)
         ttk.Radiobutton(option_frame, text="LL(1) 法", value="ll1", variable=self.parser_mode, command=self._schedule_parse).pack(side=tk.LEFT, padx=6, pady=6)
 
+        self.export_asm_button = ttk.Button(option_frame, text="生成 ASM 文件", command=self._export_asm_file, state=tk.DISABLED)
+        self.export_asm_button.pack(side=tk.RIGHT, padx=6, pady=6)
+
         self.tab_control = ttk.Notebook(parent)
         self.tab_control.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
@@ -270,7 +282,11 @@ class SNLAnalyzerApp(tk.Tk):
         semantic_errors = []
         symtab = None
         quads = []
+        optimized_quads = []
+        asm_code = ""
         inter_error = None
+        opt_error = None
+        target_error = None
 
         if source_code.strip():
             tokenizer = Tokenizer(source_code)
@@ -289,21 +305,48 @@ class SNLAnalyzerApp(tk.Tk):
                 except Exception as exc:
                     inter_error = f"中间代码生成错误：{exc}"
 
+            if not inter_error and quads and symtab is not None:
+                try:
+                    optimized_quads = optimize_quadruples(quads)
+                except Exception as exc:
+                    opt_error = f"中间代码优化错误：{exc}"
+
+            if not opt_error and optimized_quads and symtab is not None:
+                try:
+                    asm_code = generate_mips(optimized_quads, symtab)
+                except Exception as exc:
+                    target_error = f"目标代码生成错误：{exc}"
+
             if syntax_error:
                 message = syntax_error
             elif semantic_errors:
                 message = f"语义分析发现 {len(semantic_errors)} 个错误。"
             elif inter_error:
                 message = inter_error
+            elif opt_error:
+                message = opt_error
+            elif target_error:
+                message = target_error
             else:
-                message = "词法、语法、语义和中间代码生成完成。"
+                message = "词法、语法、语义、中间代码、优化和目标代码生成完成。"
         else:
             message = "请输入 SNL 代码以开始分析。"
 
+        self.current_asm_code = asm_code
         self._update_token_table(tokens)
         self._update_syntax_tree(syntax_tree, syntax_error)
         self._update_semantic_result(symtab, semantic_errors, syntax_error, bool(source_code.strip()))
-        self._update_future_stage_tabs(syntax_error, semantic_errors, inter_error, quads, bool(source_code.strip()))
+        self._update_future_stage_tabs(
+            syntax_error,
+            semantic_errors,
+            inter_error,
+            opt_error,
+            target_error,
+            quads,
+            optimized_quads,
+            asm_code,
+            bool(source_code.strip()),
+        )
         self._update_messages(message)
 
     def _update_token_table(self, tokens):
@@ -342,33 +385,79 @@ class SNLAnalyzerApp(tk.Tk):
 
         self.semantic_text.configure(state=tk.DISABLED)
 
-    def _update_future_stage_tabs(self, syntax_error, semantic_errors, inter_error, quads, has_source):
+    def _update_future_stage_tabs(
+        self,
+        syntax_error,
+        semantic_errors,
+        inter_error,
+        opt_error,
+        target_error,
+        quads,
+        optimized_quads,
+        asm_code,
+        has_source,
+    ):
         if not has_source:
             intermediate_status = "等待输入源代码。"
-            future_status = "等待输入源代码。"
+            optimized_status = "等待输入源代码。"
+            target_status = "等待输入源代码。"
         elif syntax_error:
             intermediate_status = "前序语法分析未通过，暂不执行中间代码生成。"
-            future_status = "前序语法分析未通过，暂不执行该阶段。"
+            optimized_status = "前序语法分析未通过，暂不执行中间代码优化。"
+            target_status = "前序语法分析未通过，暂不执行目标代码生成。"
         elif semantic_errors:
             intermediate_status = "前序语义分析未通过，暂不执行中间代码生成。"
-            future_status = "前序语义分析未通过，暂不执行该阶段。"
+            optimized_status = "前序语义分析未通过，暂不执行中间代码优化。"
+            target_status = "前序语义分析未通过，暂不执行目标代码生成。"
         elif inter_error:
             intermediate_status = inter_error
-            future_status = "中间代码生成未通过，暂不执行该阶段。"
+            optimized_status = "中间代码生成未通过，暂不执行中间代码优化。"
+            target_status = "中间代码生成未通过，暂不执行目标代码生成。"
+        elif opt_error:
+            intermediate_status = self._get_quadruple_text(quads)
+            optimized_status = opt_error
+            target_status = "中间代码优化未通过，暂不执行目标代码生成。"
+        elif target_error:
+            intermediate_status = self._get_quadruple_text(quads)
+            optimized_status = self._get_quadruple_text(optimized_quads)
+            target_status = target_error
         else:
             intermediate_status = self._get_quadruple_text(quads)
-            future_status = "中间代码已生成。本模块预留，等待后续实现。"
+            optimized_status = self._get_quadruple_text(optimized_quads)
+            target_status = asm_code if asm_code.strip() else "目标代码生成完成，但 ASM 内容为空。"
 
-        self.intermediate_text.configure(state=tk.NORMAL)
-        self.intermediate_text.delete("1.0", tk.END)
-        self.intermediate_text.insert("1.0", intermediate_status)
-        self.intermediate_text.configure(state=tk.DISABLED)
+        self._set_text_content(self.intermediate_text, intermediate_status)
+        self._set_text_content(self.optimized_text, optimized_status)
+        self._set_text_content(self.target_text, target_status)
+        self.export_asm_button.configure(state=tk.NORMAL if asm_code.strip() else tk.DISABLED)
 
-        for text in (self.optimized_text, self.target_text):
-            text.configure(state=tk.NORMAL)
-            text.delete("1.0", tk.END)
-            text.insert("1.0", future_status)
-            text.configure(state=tk.DISABLED)
+    def _set_text_content(self, text_widget, content):
+        text_widget.configure(state=tk.NORMAL)
+        text_widget.delete("1.0", tk.END)
+        text_widget.insert("1.0", content)
+        text_widget.configure(state=tk.DISABLED)
+
+    def _export_asm_file(self):
+        if not self.current_asm_code.strip():
+            messagebox.showwarning("无法生成 ASM 文件", "当前没有可导出的目标代码。")
+            return
+
+        path = filedialog.asksaveasfilename(
+            title="生成 ASM 文件",
+            defaultextension=".asm",
+            filetypes=(("ASM files", "*.asm"), ("Text files", "*.txt"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+
+        try:
+            with open(path, "w", encoding="utf-8", newline="\n") as asm_file:
+                asm_file.write(self.current_asm_code)
+        except OSError as exc:
+            messagebox.showerror("生成 ASM 文件失败", str(exc))
+            return
+
+        self._update_messages(f"ASM 文件已生成：{path}")
 
     @staticmethod
     def _get_tree_text(syntax_tree):

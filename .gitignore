@@ -7,3 +7,5 @@ __pycache__/
 syntax_fixed.py
 LL1.py
 getGrammar.py
+MIPS/
+目标代码/
