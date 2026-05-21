@@ -1,18 +1,202 @@
 [
   {
-    "name": "重复定义变量",
-    "source": "program DuplicateExample\ntype t = integer;\nvar integer value;\n    char value;\nbegin\n    read(value)\nend.\n"
+    "name":"正常测试代码",
+    "source":"program p\ntype t = integer;\nvar t x;\n    char y;\nprocedure add(integer a; var integer b);\nvar integer temp;\nbegin\n    temp := a;\n    b := temp\nend\nbegin    read(x);\n    x := x\nend."
   },
   {
-    "name": "未声明变量",
-    "source": "program UndeclaredVar\nbegin\n    x := 1\nend.\n"
+    "name":"词法错误:未识别符号",
+    "source":"_"
   },
   {
-    "name": "词法错误：非法字符",
-    "source": "program LexError\nbegin\n    a := 1$\nend.\n"
+    "name":"词法错误：错误符号",
+    "source":":=\"s\""
   },
   {
-    "name": "词法错误：未闭合字符串",
-    "source": "program LexError2\nbegin\n    x := 'a\nend.\n"
+    "name": "语法错误：expected 'program' keyword",
+    "source": "begin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected identifier after 'program' keyword",
+    "source": "program begin\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected type declaration or begin/procedure/var",
+    "source": "program P\ninteger x;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected '='",
+    "source": "program P\ntype t integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected ';'",
+    "source": "program P\ntype t = integer\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected identifier",
+    "source": "program P\ntype = integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected type definition",
+    "source": "program P\ntype t = ;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected base type",
+    "source": "program P\ntype t = array [1..2] of u;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected '['",
+    "source": "program P\ntype t = array 1..2] of integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected '..'",
+    "source": "program P\ntype t = array [1 2] of integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected ']'",
+    "source": "program P\ntype t = array [1..2 of integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'of'",
+    "source": "program P\ntype t = array [1..2] integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected integer constant",
+    "source": "program P\ntype t = array [a..2] of integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'end'",
+    "source": "program P\ntype t = record integer a; ;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected var declaration or begin/procedure",
+    "source": "program P\ntype t = integer;\ninteger x;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected procedure declaration or begin",
+    "source": "program P\nvar integer x;\ntype t = integer;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语法错误：expected '('",
+    "source": "program P\nbegin\n    read x)\nend.\n"
+  },
+  {
+    "name": "语法错误：expected ')'",
+    "source": "program P\nbegin\n    read(x\nend.\n"
+  },
+  {
+    "name": "语法错误：expected statement",
+    "source": "program P\nbegin\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'then'",
+    "source": "program P\nbegin\n    if 1 return else return fi\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'else'",
+    "source": "program P\nbegin\n    if 1 then return fi\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'fi'",
+    "source": "program P\nbegin\n    if 1 then return else return end\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'do'",
+    "source": "program P\nbegin\n    while 1 return endwh\nend.\n"
+  },
+  {
+    "name": "语法错误：expected 'endwh'",
+    "source": "program P\nbegin\n    while 1 do return end\nend.\n"
+  },
+  {
+    "name": "语法错误：expected assignment or call",
+    "source": "program P\nbegin\n    x\nend.\n"
+  },
+  {
+    "name": "语法错误：expected ':='",
+    "source": "program P\nbegin\n    x[1]\nend.\n"
+  },
+  {
+    "name": "语法错误：expected factor",
+    "source": "program P\nbegin\n    x := ;\nend.\n"
+  },
+  {
+    "name": "语法错误：expected variable suffix",
+    "source": "program P\nbegin\n    write(x program)\nend.\n"
+  },
+  {
+    "name": "语义错误：同一作用域内类型重复定义",
+    "source": "program P\ntype t = integer; t = char;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语义错误：同一作用域内变量重复定义",
+    "source": "program P\nvar integer x; char x;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语义错误：同一作用域内过程重复定义",
+    "source": "program P\nprocedure p();\nbegin\n    return\nend\nprocedure p();\nbegin\n    return\nend\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语义错误：过程参数重复定义",
+    "source": "program P\nprocedure p(integer x; char x);\nbegin\n    return\nend\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语义错误：未声明变量",
+    "source": "program P\nbegin\n    x := 1\nend.\n"
+  },
+  {
+    "name": "语义错误：未定义类型",
+    "source": "program P\nvar u x;\nbegin\n    return\nend.\n"
+  },
+  {
+    "name": "语义错误：未定义过程",
+    "source": "program P\nbegin\n    p()\nend.\n"
+  },
+  {
+    "name": "语义错误：数组下标类型检查",
+    "source": "program P\nvar char c; array [1..2] of integer a;\nbegin\n    a[c] := 1\nend.\n"
+  },
+  {
+    "name": "语义错误：记录字段存在性检查",
+    "source": "program P\ntype r = record integer a; end;\nvar r x;\nbegin\n    x.b := 1\nend.\n"
+  },
+  {
+    "name": "语义错误：赋值语句左右类型匹配检查",
+    "source": "program P\nvar integer x; char c;\nbegin\n    x := c\nend.\n"
+  },
+  {
+    "name": "语义错误：算术表达式操作数类型检查",
+    "source": "program P\nvar integer x; char c;\nbegin\n    x := c + 1\nend.\n"
+  },
+  {
+    "name": "语义错误：关系表达式左右类型兼容检查",
+    "source": "program P\nvar integer x; char c;\nbegin\n    if x = c then return else return fi\nend.\n"
+  },
+  {
+    "name": "语义错误：过程调用参数个数检查",
+    "source": "program P\nprocedure p(integer x);\nbegin\n    return\nend\nbegin\n    p()\nend.\n"
+  },
+  {
+    "name": "语义错误：过程调用参数类型检查",
+    "source": "program P\nvar char c;\nprocedure p(integer x);\nbegin\n    return\nend\nbegin\n    p(c)\nend.\n"
+  },
+  {
+    "name": "语义错误：var 参数必须传入变量的检查",
+    "source": "program P\nprocedure p(var integer x);\nbegin\n    return\nend\nbegin\n    p(1)\nend.\n"
+  },
+  {
+    "name": "优化测试：常量折叠",
+    "source": "program FoldConst\nvar integer x;\nbegin\n    x := 2 + 3\nend.\n"
+  },
+  {
+    "name": "优化测试：公共子表达式消除",
+    "source": "program CSETest\nvar integer a; integer b; integer x; integer y;\nbegin\n    x := a + b;\n    y := a + b\nend.\n"
+  },
+  {
+    "name": "优化测试：循环不变式提升",
+    "source": "program HoistTest\nvar integer x; integer y; integer a; integer b;\nbegin\n    while x do\n        y := a + b\n    endwh\nend.\n"
+  },
+  {
+    "name": "优化测试：完整优化组合",
+    "source": "program OptimizeAll\nvar integer x; integer y; integer a; integer b;\nbegin\n    x := 1 + 2;\n    y := a + b;\n    y := a + b;\n    while x do\n        y := a + b\n    endwh\nend.\n"
   }
 ]

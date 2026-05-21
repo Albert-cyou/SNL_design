@@ -170,7 +170,16 @@ class LL1Parser:
         return children[0] if children else None
 
     def act_ProcDecpart(self, children: List[Any]):
-        return children[0] if children else None
+        # Collect ProcDecNode items (possibly nested in lists) and wrap into ProcDecHeadNode
+        procs: List[syntax.ProcDecNode] = []
+        for c in children:
+            if isinstance(c, syntax.ProcDecNode):
+                procs.append(c)
+            elif isinstance(c, list):
+                procs.extend([x for x in c if isinstance(x, syntax.ProcDecNode)])
+        if not procs:
+            return None
+        return syntax.ProcDecHeadNode(nodes=procs, lineno=(procs[0].lineno if procs else 0))
 
     def act_TypeDec(self, children: List[Any]):
         nodes = next((c for c in children if isinstance(c, list) and c and isinstance(c[0], syntax.TypeDecNode)), [])

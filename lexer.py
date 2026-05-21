@@ -290,18 +290,21 @@ class Tokenizer:
     
         
 if __name__ == "__main__":
-    source_code = """{我是一个注释}
-    program _Example
-    type t=integer;
-    var t v1;
-        char v2;
-    begin
-        read(v1);
-        v1:=v1*10;
-        v1="d";
-        v2:='a';
-        write(v1);
-    end.
+    source_code = """
+program p
+type t = integer;
+var t x;
+    char y;
+procedure add(integer a; var integer b);
+var integer temp;
+begin
+    temp := a;
+    b := temp
+end
+begin    
+    read(x);
+    x := x
+end.
     """
     tokenizer = Tokenizer(source_code)
     tokens, errors = tokenizer.tokenize(return_errors=True)

@@ -254,7 +254,8 @@ class SNLAnalyzerApp(tk.Tk):
         syntax_tab = ttk.Frame(self.tab_control)
         self.tab_control.add(syntax_tab, text="语法树")
 
-        self.syntax_tree_text = tk.Text(syntax_tab, wrap=tk.NONE, font=("Consolas", 11), state=tk.NORMAL)
+        # 启用自动换行，长的符号/节点描述将按单词边界换行显示
+        self.syntax_tree_text = tk.Text(syntax_tab, wrap=tk.WORD, font=("Consolas", 11), state=tk.NORMAL)
         self.syntax_tree_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
         x_scroll = ttk.Scrollbar(syntax_tab, orient=tk.HORIZONTAL, command=self.syntax_tree_text.xview)
@@ -413,8 +414,11 @@ class SNLAnalyzerApp(tk.Tk):
     def _update_syntax_tree(self, syntax_tree, syntax_error):
         self.syntax_tree_text.configure(state=tk.NORMAL)
         self.syntax_tree_text.delete("1.0", tk.END)
-        if syntax_error:
+        if syntax_error is not None:
             self.syntax_tree_text.insert("1.0", f"语法分析错误：{syntax_error}\n")
+            if syntax_tree is not None:
+                self.syntax_tree_text.insert("end", "\n当前语法树：\n")
+                self.syntax_tree_text.insert("end", self._get_tree_text(syntax_tree))
         elif syntax_tree is None:
             self.syntax_tree_text.insert("1.0", "暂无语法树。请输入代码并选择递归下降法分析。")
         else:

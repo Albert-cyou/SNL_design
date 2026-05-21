@@ -1,9 +1,24 @@
-from make_token import Tokenizer
-import LL1_syntax
+from lexer import Tokenizer
+import ll1_parser
 
-s = '{注释}\nprogram Example\ntype t = integer;\nvar v1 : t;\nbegin\n write(v1)\nend.\n'
+s = """
+program p
+type t = integer;
+var t x;
+    char y;
+procedure add(integer a; var integer b);
+var integer temp;
+begin
+    temp := a;
+    b := temp
+end
+begin    read(x);
+    x := x
+end.
+
+"""
 tokens = Tokenizer(s).tokenize()
-parser = LL1_syntax.LL1Parser()
+parser = ll1_parser.LL1Parser()
 root, err = parser.parse(tokens)
 print('err=', err)
 print(root)
