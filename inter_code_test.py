@@ -2,24 +2,27 @@ from lexer import Tokenizer
 import recursive_descent_parser as parser
 import semantic_analyzer as semantic
 import inter_code
+import inter_code_optimizer
 
 
 SOURCE = """
 program InterCodeDemo
-var integer x;
+var integer a;
+    integer b;
+    integer x;
     integer y;
+    integer i;
 begin
-    read(x);
-    y := x + 2 * 3;
-    if y < 10 then
-        y := y + 1
-    else
-        y := y - 1
-    fi;
-    while y < 20 do
-        y := y + 2
+    read(a);
+    read(b);
+    y := 2 * 3;
+    x := a + b;
+    y := a + b;
+    while i < 10 do
+        x := a + b;
+        i := i + 1
     endwh;
-    write(y)
+    write(x)
 end.
 """
 
@@ -39,9 +42,13 @@ def main():
         return
 
     quads, updated_symtab = inter_code.generate_intermediate_code(syntax_tree, symtab)
+    optimized_quads = inter_code_optimizer.optimize_quadruples(quads)
 
-    print("Quadruples:")
+    print("Quadruples before optimization:")
     inter_code.print_quadruples(quads)
+
+    print("\nQuadruples after optimization:")
+    inter_code.print_quadruples(optimized_quads)
 
     print("\nSymbol table after intermediate code generation:")
     updated_symtab.print_table()
