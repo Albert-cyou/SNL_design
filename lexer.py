@@ -110,6 +110,7 @@ class Tokenizer:
         self.source = source_code
         self.pos = 0
         self.line = 1
+        self.errors = []
         
     # def skip_whitespace_and_comments(self):
     #     """跳过空格和注释"""
@@ -140,9 +141,14 @@ class Tokenizer:
             
     #         break
   
-    def tokenize(self):
-        """主tokenize函数，使用DFA直接转向法"""
+    def tokenize(self, return_errors: bool = False):
+        """主tokenize函数，使用DFA直接转向法
+
+        如果 return_errors=True，则返回 (tokens, errors)。
+        否则只返回 tokens，保持与现有调用兼容。
+        """
         tokens = []
+        self.errors = []
 
         while self.pos < len(self.source):
 
@@ -248,6 +254,8 @@ class Tokenizer:
                             self.pos += 1
                         if self.pos < len(self.source) and self.source[self.pos] == "'":
                             self.pos += 1
+                        else:
+                            self.errors.append((self.line, self.source[lex_start:self.pos], "unclosed string literal"))
                         lex = self.source[lex_start:self.pos]
                         token = Token(self.line, lex, TokenType.IDENTIFYER)
                         state = State.END_STATE
@@ -259,10 +267,13 @@ class Tokenizer:
                             self.pos += 1
                         if self.pos < len(self.source) and self.source[self.pos] == '}':
                             self.pos += 1
+                        else:
+                            self.errors.append((self.line, self.source[lex_start:self.pos], "unclosed comment"))
                         state = State.END_STATE
 
                     case State.ERROR:
                         token = Token(self.line, current_char, TokenType.ERROR)
+                        self.errors.append((self.line, current_char, "invalid token"))
                         self.pos += 1
                         state = State.END_STATE
 
@@ -273,6 +284,8 @@ class Tokenizer:
                 tokens.append(token)
 
         tokens.append(Token(self.line, '', TokenType.EOF))
+        if return_errors:
+            return tokens, self.errors
         return tokens
     
         
@@ -291,7 +304,13 @@ if __name__ == "__main__":
     end.
     """
     tokenizer = Tokenizer(source_code)
-    tokens = tokenizer.tokenize()
+    tokens, errors = tokenizer.tokenize(return_errors=True)
+
+    if errors:
+        print("Lexical errors:")
+        for line, lex, message in errors:
+            print(f"Line {line}: {message} -> {lex}")
+
     print("Tokens:")
     for token in tokens:
         print(f"Line {token.Lineshow}: {token.Lex} ({token.Sem})")
