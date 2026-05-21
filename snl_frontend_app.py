@@ -2,6 +2,8 @@
 # 输入代码进行分析
 
 import io
+import json
+import os
 import tkinter as tk
 from contextlib import redirect_stdout
 from tkinter import filedialog, messagebox, ttk
@@ -52,10 +54,14 @@ class SNLAnalyzerApp(tk.Tk):
         self.parser_mode = tk.StringVar(value="recursive")
         self._parse_after_id = None
         self.current_asm_code = ""
+        self.error_cases = []
+        self.error_case_names = []
+        self.error_case_path = os.path.join(os.path.dirname(__file__), "error_cases.json")
 
         # 高亮标签样式
         self.highlight_tag = "current_line"
 
+        self._load_error_cases()
         self._build_ui()
         self._schedule_parse()
 
@@ -143,6 +149,33 @@ class SNLAnalyzerApp(tk.Tk):
         # 滚动时更新高亮
         self._highlight_current_line()
 
+    def _load_error_cases(self):
+        self.error_cases = []
+        self.error_case_names = []
+        if not os.path.exists(self.error_case_path):
+            return
+        try:
+            with open(self.error_case_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                self.error_cases = data.get("cases", [])
+            elif isinstance(data, list):
+                self.error_cases = data
+            self.error_case_names = [case.get("name", f"测试用例 {i+1}") for i, case in enumerate(self.error_cases)]
+        except Exception:
+            self.error_cases = []
+            self.error_case_names = []
+
+    def _apply_selected_case(self):
+        name = self.case_combobox.get()
+        case = next((item for item in self.error_cases if item.get("name") == name), None)
+        if not case:
+            return
+        self.source_text.delete("1.0", tk.END)
+        self.source_text.insert("1.0", case.get("source", ""))
+        self._update_line_numbers()
+        self._schedule_parse()
+
     def _update_line_numbers(self, event=None):
         """更新行号显示 - 修复兼容问题"""
         # 兼容所有 Python 版本的获取行数方法
@@ -187,6 +220,8 @@ class SNLAnalyzerApp(tk.Tk):
         self.export_asm_button = ttk.Button(option_frame, text="生成 ASM 文件", command=self._export_asm_file, state=tk.DISABLED)
         self.export_asm_button.pack(side=tk.RIGHT, padx=6, pady=6)
 
+        self._build_case_selector(parent)
+
         self.tab_control = ttk.Notebook(parent)
         self.tab_control.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
@@ -208,6 +243,7 @@ class SNLAnalyzerApp(tk.Tk):
         self.token_tree.column("line", width=60, anchor=tk.CENTER)
         self.token_tree.column("lex", width=180, anchor=tk.W)
         self.token_tree.column("type", width=220, anchor=tk.W)
+        self.token_tree.tag_configure("error", foreground="red")
         self.token_tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=(8, 0), pady=8)
 
         scrollbar = ttk.Scrollbar(token_tab, orient=tk.VERTICAL, command=self.token_tree.yview)
@@ -250,6 +286,17 @@ class SNLAnalyzerApp(tk.Tk):
         text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         return text
 
+    def _build_case_selector(self, parent):
+        case_frame = ttk.LabelFrame(parent, text="错误测试用例")
+        case_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
+
+        self.case_combobox = ttk.Combobox(case_frame, values=self.error_case_names, state="readonly")
+        self.case_combobox.pack(fill=tk.X, side=tk.LEFT, expand=True, padx=(8, 0), pady=8)
+        self.case_combobox.bind("<<ComboboxSelected>>", lambda e: self._apply_selected_case())
+
+        self.case_load_button = ttk.Button(case_frame, text="载入", command=self._apply_selected_case, state=tk.NORMAL if self.error_case_names else tk.DISABLED)
+        self.case_load_button.pack(side=tk.RIGHT, padx=8, pady=8)
+
     def _build_message_bar(self, parent):
         message_frame = ttk.Frame(parent)
         message_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
@@ -287,17 +334,21 @@ class SNLAnalyzerApp(tk.Tk):
         inter_error = None
         opt_error = None
         target_error = None
+        lexical_errors = []
 
         if source_code.strip():
             tokenizer = Tokenizer(source_code)
-            tokens = tokenizer.tokenize()
-            if self.parser_mode.get() == "recursive":
-                syntax_tree, syntax_error = recursive_syntax_analysis(tokens)
+            tokens, lexical_errors = tokenizer.tokenize(return_errors=True)
+            if lexical_errors:
+                syntax_error = None
             else:
-                syntax_tree, syntax_error = ll1_syntax_analysis(tokens)
+                if self.parser_mode.get() == "recursive":
+                    syntax_tree, syntax_error = recursive_syntax_analysis(tokens)
+                else:
+                    syntax_tree, syntax_error = ll1_syntax_analysis(tokens)
 
-            if syntax_error is None and syntax_tree is not None:
-                symtab, semantic_errors = semantic_analyze(syntax_tree)
+                if syntax_error is None and syntax_tree is not None:
+                    symtab, semantic_errors = semantic_analyze(syntax_tree)
 
             if not syntax_error and not semantic_errors and syntax_tree is not None and symtab is not None:
                 try:
@@ -317,7 +368,9 @@ class SNLAnalyzerApp(tk.Tk):
                 except Exception as exc:
                     target_error = f"目标代码生成错误：{exc}"
 
-            if syntax_error:
+            if lexical_errors:
+                message = f"词法分析发现 {len(lexical_errors)} 个错误。"
+            elif syntax_error:
                 message = syntax_error
             elif semantic_errors:
                 message = f"语义分析发现 {len(semantic_errors)} 个错误。"
@@ -335,7 +388,7 @@ class SNLAnalyzerApp(tk.Tk):
         self.current_asm_code = asm_code
         self._update_token_table(tokens)
         self._update_syntax_tree(syntax_tree, syntax_error)
-        self._update_semantic_result(symtab, semantic_errors, syntax_error, bool(source_code.strip()))
+        self._update_semantic_result(symtab, semantic_errors, syntax_error, lexical_errors, bool(source_code.strip()))
         self._update_future_stage_tabs(
             syntax_error,
             semantic_errors,
@@ -354,7 +407,8 @@ class SNLAnalyzerApp(tk.Tk):
             self.token_tree.delete(item)
         for index, token in enumerate(tokens):
             token_type = token.Sem.name if hasattr(token.Sem, "name") else str(token.Sem)
-            self.token_tree.insert("", tk.END, values=(token.Lineshow, token.Lex, token_type))
+            tag = "error" if token_type == "ERROR" else ""
+            self.token_tree.insert("", tk.END, values=(token.Lineshow, token.Lex, token_type), tags=(tag,))
 
     def _update_syntax_tree(self, syntax_tree, syntax_error):
         self.syntax_tree_text.configure(state=tk.NORMAL)
@@ -368,12 +422,16 @@ class SNLAnalyzerApp(tk.Tk):
             self.syntax_tree_text.insert("1.0", printed)
         self.syntax_tree_text.configure(state=tk.DISABLED)
 
-    def _update_semantic_result(self, symtab, semantic_errors, syntax_error, has_source):
+    def _update_semantic_result(self, symtab, semantic_errors, syntax_error, lexical_errors, has_source):
         self.semantic_text.configure(state=tk.NORMAL)
         self.semantic_text.delete("1.0", tk.END)
 
         if not has_source:
             self.semantic_text.insert("1.0", "等待输入源代码。")
+        elif lexical_errors:
+            self.semantic_text.insert("1.0", "词法分析错误：\n")
+            for line, lex, message in lexical_errors:
+                self.semantic_text.insert("end", f"Line {line}: {message} -> {lex}\n")
         elif syntax_error:
             self.semantic_text.insert("1.0", "语法分析未通过，暂不执行语义分析。")
         elif semantic_errors:

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "重复定义变量",
+    "source": "program DuplicateExample\ntype t = integer;\nvar integer value;\n    char value;\nbegin\n    read(value)\nend.\n"
+  },
+  {
+    "name": "未声明变量",
+    "source": "program UndeclaredVar\nbegin\n    x := 1\nend.\n"
+  },
+  {
+    "name": "词法错误：非法字符",
+    "source": "program LexError\nbegin\n    a := 1$\nend.\n"
+  },
+  {
+    "name": "词法错误：未闭合字符串",
+    "source": "program LexError2\nbegin\n    x := 'a\nend.\n"
+  }
+]
